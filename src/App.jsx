@@ -383,6 +383,7 @@ export default function App() {
       const data = await r.json();
       if (data.success && data.tasks.length > 0) {
         setOfTasks(data.tasks);
+        setOfFilter("All");
         setRefreshStatus("done");
         setTimeout(() => setRefreshStatus("idle"), 3000);
       } else throw new Error(data.error || "No tasks returned");
