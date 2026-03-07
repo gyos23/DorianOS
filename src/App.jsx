@@ -987,7 +987,20 @@ export default function App() {
                 </button>
               ))}
             </div>
-            <div style={{marginLeft:"auto",display:"flex",gap:6}}>
+            <div style={{marginLeft:"auto",display:"flex",gap:6,alignItems:"center"}}>
+              {/* Bridge status — always visible */}
+              <div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",
+                border:`1px solid ${bridgeStatus==="online"?t.accent:bridgeStatus==="offline"?t.danger:t.border3}`,
+                borderRadius:6,cursor:"pointer"}}
+                onClick={checkBridge}
+                title="Click to recheck bridge status">
+                <div style={{width:7,height:7,borderRadius:"50%",flexShrink:0,
+                  background:bridgeStatus==="online"?t.accent:bridgeStatus==="offline"?t.danger:"#64748B"}}/>
+                <span style={{fontSize:10,color:bridgeStatus==="online"?t.accent:bridgeStatus==="offline"?t.danger:t.textDim,
+                  fontFamily:"'Syne',sans-serif",fontWeight:700,letterSpacing:".06em",textTransform:"uppercase"}}>
+                  {bridgeStatus==="online"?"Bridge live":bridgeStatus==="offline"?"Bridge offline":"Bridge..."}
+                </span>
+              </div>
               {[["Inbox","omnifocus:///inbox"],["Today","omnifocus:///today"],["Flagged","omnifocus:///flagged"],["Forecast","omnifocus:///forecast"]].map(([label,href])=>(
                 <a key={label} href={href} style={{fontSize:10,color:t.textMuted,textDecoration:"none",padding:"4px 10px",border:`1px solid ${t.border3}`,borderRadius:6,fontFamily:"'Syne',sans-serif",fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",transition:"color .15s,border-color .15s"}}
                   onMouseOver={e=>{e.currentTarget.style.color=t.accent;e.currentTarget.style.borderColor=t.accent;}}
