@@ -374,6 +374,25 @@ export default function App() {
     } catch { setBridgeStatus("offline"); }
   }, []);
 
+  const [refreshStatus, setRefreshStatus] = useState("idle"); // "idle"|"loading"|"done"|"error"
+
+  const fetchOFTasks = useCallback(async () => {
+    setRefreshStatus("loading");
+    try {
+      const r = await fetch(`${BRIDGE_URL}/tasks`, {signal: AbortSignal.timeout(30000)});
+      const data = await r.json();
+      if (data.success && data.tasks.length) {
+        setOfTasks(data.tasks);
+        setRefreshStatus("done");
+        setTimeout(() => setRefreshStatus("idle"), 3000);
+      } else throw new Error(data.error || "No tasks returned");
+    } catch (err) {
+      console.error("Fetch OF tasks failed:", err.message);
+      setRefreshStatus("error");
+      setTimeout(() => setRefreshStatus("idle"), 4000);
+    }
+  }, []);
+
   // Check bridge whenever Tasks tab is opened
   useEffect(()=>{
     if (section==="tasks") checkBridge();
@@ -1040,6 +1059,19 @@ export default function App() {
               ))}
             </div>
             <div style={{marginLeft:"auto",display:"flex",gap:6,alignItems:"center"}}>
+              {/* Refresh tasks from OF */}
+              <button
+                className={`btn ${refreshStatus==="done"?"active":""}`}
+                disabled={bridgeStatus!=="online" || refreshStatus==="loading"}
+                onClick={fetchOFTasks}
+                style={{
+                  borderColor: refreshStatus==="error"?t.danger:refreshStatus==="done"?t.accent:"",
+                  color: refreshStatus==="error"?t.danger:refreshStatus==="done"?t.accent:"",
+                  opacity: bridgeStatus!=="online"?0.4:1,
+                  cursor: bridgeStatus!=="online"?"not-allowed":"pointer",
+                }}>
+                {refreshStatus==="loading"?"⏳ Fetching...":refreshStatus==="done"?"✓ Up to date":refreshStatus==="error"?"✗ Fetch failed":"↻ Refresh OF"}
+              </button>
               {/* Bridge status — always visible */}
               <div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",
                 border:`1px solid ${bridgeStatus==="online"?t.accent:bridgeStatus==="offline"?t.danger:t.border3}`,
