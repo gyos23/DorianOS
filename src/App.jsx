@@ -171,52 +171,54 @@ const LM_RECURRING = [
   {id:"lm-applecard-apr",payee:"Apple Card",amount:300,date:"2026-04-30",type:"expense",source:"lunchmoney",category:"Debt"},
 ];
 
-// ─── OmniFocus task data ──────────────────────────────────────────────────────
-const OF_PROJECT_COLORS = {
-  "Inbox":        "#94A3B8",
-  "Life":         "#6366F1",
-  "Day 2 Day":    "#3B82F6",
-  "PM Platform":  "#EF4444",
-  "Move Out":     "#F59E0B",
+// ─── OmniFocus data (real projects & tasks from OF) ──────────────────────────
+const OF_PROJECTS = {
+  "Day 2 Day":                      { color:"#94A3B8", emoji:"📅" },
+  "Sell 300 Planners":              { color:"#EF4444", emoji:"🔴" },
+  "Publish Project Guidance":       { color:"#EF4444", emoji:"🔴" },
+  "Eliminate CC Debt":              { color:"#22C55E", emoji:"🟢" },
+  "Inbox":                          { color:"#64748B", emoji:"📥" },
 };
-function ofProjectColor(project) { return OF_PROJECT_COLORS[project] || "#94A3B8"; }
+function ofColor(project) { return (OF_PROJECTS[project]||{color:"#64748B"}).color; }
 
+// Tasks sourced from Forecast screenshot — overdue tasks included so they show up
 const INITIAL_OF_TASKS = [
-  // Flagged
-  { id:"fPRogho5QsD", name:"Print out proof of time in the US W-2s", project:"Inbox",      flagged:true,  dueDate:"2026-03-05", defer:null },
-  { id:"hGKt2mNpQxA", name:"Amex to Nick",                           project:"Inbox",      flagged:true,  dueDate:"2026-03-03", defer:null },
-  { id:"kBSd3rOpTyB", name:"Shoot Posts",                            project:"Day 2 Day",  flagged:true,  dueDate:"2026-03-07", defer:null },
-  { id:"mCTe4sQqUzC", name:"Work on PM platform",                    project:"PM Platform",flagged:true,  dueDate:"2026-03-10", defer:null },
-  { id:"nDUf5tRrVaD", name:"PM Platform deck review",                project:"PM Platform",flagged:false, dueDate:"2026-03-14", defer:null },
-  { id:"oEVg6uSsWbE", name:"Update bio on all platforms",            project:"Day 2 Day",  flagged:false, dueDate:"2026-03-15", defer:null },
-  // Life project
-  { id:"pFWh7vTtXcF", name:"Write Vision Statement",                 project:"Life",       flagged:false, dueDate:null,         defer:null },
-  { id:"qGXi8wUuYdG", name:"Define Mission Statement",               project:"Life",       flagged:false, dueDate:null,         defer:null },
-  { id:"rHYj9xVvZeH", name:"Identify Top 3 Values",                  project:"Life",       flagged:false, dueDate:null,         defer:null },
-  { id:"sIZk0yWwAfI", name:"Map out 5 Pillars",                      project:"Life",       flagged:false, dueDate:null,         defer:null },
-  { id:"tJal1zXxBgJ", name:"Write Affirmations",                     project:"Life",       flagged:false, dueDate:null,         defer:null },
-  // Day 2 Day
-  { id:"uKbm2aYyCh", name:"Plan & Review Week",                      project:"Day 2 Day",  flagged:false, dueDate:"2026-03-02", defer:null },
-  { id:"vLcn3bZzDi", name:"Prep Meals",                              project:"Day 2 Day",  flagged:false, dueDate:"2026-03-02", defer:null },
-  { id:"wMdo4caEj",  name:"Explore freelance jobs",                  project:"Day 2 Day",  flagged:false, dueDate:"2026-03-08", defer:null },
-  { id:"xNep5dbFk",  name:"Newsletter draft — From the Ground Up",   project:"Day 2 Day",  flagged:false, dueDate:"2026-03-20", defer:null },
-  { id:"yOfq6ecGl",  name:"Instagram content batch",                 project:"Day 2 Day",  flagged:false, dueDate:"2026-03-22", defer:null },
-  // PM Platform
-  { id:"zPgr7fdHm",  name:"Steering committee slides",               project:"PM Platform",flagged:false, dueDate:"2026-03-12", defer:null },
-  { id:"aQhs8geIn",  name:"Vendor comparison matrix",                project:"PM Platform",flagged:false, dueDate:"2026-03-18", defer:null },
-  { id:"bRit9hfJo",  name:"Databricks architecture doc",             project:"PM Platform",flagged:false, dueDate:"2026-03-25", defer:null },
-  // Move Out
-  { id:"cSju0igKp",  name:"Schedule movers",                         project:"Move Out",   flagged:false, dueDate:"2026-03-20", defer:null },
-  { id:"dTkv1jhLq",  name:"Utility transfer notices",                project:"Move Out",   flagged:false, dueDate:"2026-03-28", defer:null },
+  // Past-due (still incomplete per Forecast view)
+  {id:"t01",name:"Review and Plan 13 Weeks",        project:"Day 2 Day",          flagged:false, dueDate:"2025-12-28"},
+  {id:"t02",name:"Review/Plan for the Month",        project:"Day 2 Day",          flagged:false, dueDate:"2026-01-03"},
+  {id:"t03",name:"Contact Amex",                     project:"Day 2 Day",          flagged:false, dueDate:"2026-01-21"},
+  {id:"t04",name:"Check ad performance & adjust",    project:"Sell 300 Planners",  flagged:false, dueDate:"2026-02-20"},
+  {id:"t05",name:"Saturday: Plan week's content",    project:"Sell 300 Planners",  flagged:false, dueDate:"2026-02-21"},
+  {id:"t06",name:"Sunday: Review weekly sales",      project:"Sell 300 Planners",  flagged:false, dueDate:"2026-02-22"},
+  {id:"t07",name:"Send sales push email",            project:"Sell 300 Planners",  flagged:false, dueDate:"2026-02-22"},
+  {id:"t08",name:"Post the daily Instagram content", project:"Sell 300 Planners",  flagged:false, dueDate:"2026-02-24"},
+  {id:"t09",name:"Reach out to Cap 1",               project:"Day 2 Day",          flagged:false, dueDate:"2026-02-24"},
+  {id:"t10",name:"Contact VHI about dental coverage",project:"Day 2 Day",          flagged:false, dueDate:"2026-02-24"},
+  {id:"t11",name:"Post 3-6 Instagram stories",       project:"Sell 300 Planners",  flagged:false, dueDate:"2026-02-24"},
+  {id:"t12",name:"Work on PM platform",              project:"Publish Project Guidance", flagged:true,  dueDate:"2026-02-25"},
+  {id:"t13",name:"Research Driver Requirements",     project:"Day 2 Day",          flagged:false, dueDate:"2026-02-25"},
+  {id:"t14",name:"Wednesday: Mid-week strategy check",project:"Sell 300 Planners", flagged:false, dueDate:"2026-02-25"},
+  {id:"t15",name:'Write my "40 Pages"',              project:"Day 2 Day",          flagged:false, dueDate:"2026-02-27"},
+  {id:"t16",name:"Review routine",                   project:"Day 2 Day",          flagged:false, dueDate:"2026-02-28"},
+  {id:"t17",name:"Pay statement balances off cards", project:"Day 2 Day",          flagged:true,  dueDate:"2026-02-28"},
+  // Upcoming (Today = March 1 has 4 per Forecast header)
+  {id:"t18",name:"Weekly review",                    project:"Day 2 Day",          flagged:false, dueDate:"2026-03-01"},
+  {id:"t19",name:"Plan this week",                   project:"Day 2 Day",          flagged:false, dueDate:"2026-03-01"},
+  {id:"t20",name:"Post Instagram content",           project:"Sell 300 Planners",  flagged:false, dueDate:"2026-03-01"},
+  {id:"t21",name:"Check card balances",              project:"Eliminate CC Debt",  flagged:false, dueDate:"2026-03-01"},
+  // Future
+  {id:"t22",name:"Forward: Complete Scrum Master cert", project:"Day 2 Day",       flagged:false, dueDate:"2026-03-10"},
+  {id:"t23",name:"Eliminate CC Debt — monthly review", project:"Eliminate CC Debt",flagged:false, dueDate:"2026-03-21"},
+  {id:"t24",name:"Monthly content batch — Sell 300",   project:"Sell 300 Planners",flagged:false, dueDate:"2026-03-15"},
+  {id:"t25",name:"Review PM Platform progress",      project:"Publish Project Guidance", flagged:false, dueDate:"2026-03-12"},
 ];
 
 function ofDueLabel(dueDate) {
-  if (!dueDate) return null;
-  const today = dateKey(new Date());
+  if (!dueDate) return "nodate";
+  const today = dateKey(TODAY);
   if (dueDate < today) return "overdue";
   if (dueDate === today) return "today";
-  const d = new Date(dueDate+"T12:00:00");
-  const diff = Math.round((d - new Date()) / 86400000);
+  const diff = Math.round((new Date(dueDate+"T12:00:00") - TODAY) / 86400000);
   if (diff <= 3) return "soon";
   return "upcoming";
 }
@@ -273,30 +275,29 @@ export default function App() {
   const [ofTasks,        setOfTasks]        = useState(INITIAL_OF_TASKS);
   const [ofView,         setOfView]         = useState("dashboard");
   const [ofMonth,        setOfMonth]        = useState(new Date(2026,2,1));
+  const [ofFilter,       setOfFilter]       = useState("All");
   const [ofDragItem,     setOfDragItem]     = useState(null);
   const [ofDragOver,     setOfDragOver]     = useState(null);
   const [pendingChanges, setPendingChanges] = useState([]);
-  const [ofFilter,       setOfFilter]       = useState("All");
   const [ofScriptCopied, setOfScriptCopied] = useState(false);
 
   const ofFiltered = useMemo(()=>{
     if (ofFilter==="Flagged") return ofTasks.filter(t=>t.flagged);
+    if (ofFilter==="Overdue") return ofTasks.filter(t=>t.dueDate && t.dueDate<dateKey(TODAY));
     if (ofFilter!=="All") return ofTasks.filter(t=>t.project===ofFilter);
     return ofTasks;
   },[ofTasks,ofFilter]);
 
   const ofStats = useMemo(()=>({
     flagged: ofTasks.filter(t=>t.flagged).length,
-    today:   ofTasks.filter(t=>t.dueDate===dateKey(TODAY)).length,
     overdue: ofTasks.filter(t=>t.dueDate&&t.dueDate<dateKey(TODAY)).length,
+    today:   ofTasks.filter(t=>t.dueDate===dateKey(TODAY)).length,
     noDate:  ofTasks.filter(t=>!t.dueDate).length,
   }),[ofTasks]);
 
   const ofByDate = useMemo(()=>{
     const m={};
-    for (const t of ofTasks) {
-      if (t.dueDate){if(!m[t.dueDate])m[t.dueDate]=[];m[t.dueDate].push(t);}
-    }
+    for (const t of ofTasks){if(t.dueDate){if(!m[t.dueDate])m[t.dueDate]=[];m[t.dueDate].push(t);}}
     return m;
   },[ofTasks]);
 
@@ -304,21 +305,49 @@ export default function App() {
   const ofOnDragOver  = useCallback((e,k)=>{e.preventDefault();setOfDragOver(k);},[]);
   const ofOnDrop = useCallback((e,newDate)=>{
     e.preventDefault();
-    if (!ofDragItem||ofDragItem.dueDate===newDate){setOfDragItem(null);setOfDragOver(null);return;}
+    if(!ofDragItem||ofDragItem.dueDate===newDate){setOfDragItem(null);setOfDragOver(null);return;}
     setOfTasks(p=>p.map(t=>t.id===ofDragItem.id?{...t,dueDate:newDate}:t));
     setPendingChanges(p=>[...p.filter(c=>c.id!==ofDragItem.id),{id:ofDragItem.id,name:ofDragItem.name,oldDate:ofDragItem.dueDate,newDate}]);
     setOfDragItem(null);setOfDragOver(null);
   },[ofDragItem]);
 
-  function generateOfScript(){
-    if(!pendingChanges.length) return "-- No pending changes";
-    const lines=pendingChanges.map(c=>`  set due date of (first flattened task whose id = "${c.id}") to date "${c.newDate}"`);
-    return `tell application "OmniFocus"\n  tell document 1\n${lines.join("\n")}\n  end tell\nend tell`;
+  const BRIDGE_URL = "http://localhost:3131";
+  const [bridgeStatus, setBridgeStatus] = useState("unknown");
+  const [syncStatus,   setSyncStatus]   = useState("idle");
+
+  const checkBridge = useCallback(async () => {
+    try {
+      const r = await fetch(`${BRIDGE_URL}/health`, {signal: AbortSignal.timeout(2000)});
+      setBridgeStatus(r.ok ? "online" : "offline");
+    } catch { setBridgeStatus("offline"); }
+  }, []);
+
+  async function syncToOmniFocus() {
+    if (!pendingChanges.length) return;
+    setSyncStatus("syncing");
+    try {
+      const res = await fetch(`${BRIDGE_URL}/sync`, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({changes: pendingChanges.map(c=>({id:c.id, newDate:c.newDate}))})
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSyncStatus("done");
+        setPendingChanges([]);
+        setTimeout(()=>setSyncStatus("idle"), 3000);
+      } else throw new Error(data.error);
+    } catch {
+      setSyncStatus("error");
+      setTimeout(()=>setSyncStatus("idle"), 4000);
+    }
   }
-  function copyOfScript(){
-    navigator.clipboard.writeText(generateOfScript()).then(()=>{
-      setOfScriptCopied(true);setTimeout(()=>setOfScriptCopied(false),2500);
-    });
+
+  function copyFallbackScript(){
+    if(!pendingChanges.length) return;
+    const lines=pendingChanges.map(c=>`  set due date of (first flattened task whose id = "${c.id}") to date "${c.newDate}"`);
+    const script=`tell application "OmniFocus"\n  tell document 1\n${lines.join("\n")}\n  end tell\nend tell`;
+    navigator.clipboard.writeText(script).then(()=>{setOfScriptCopied(true);setTimeout(()=>setOfScriptCopied(false),2500);});
   }
 
   const debtCharges = useMemo(()=>{
@@ -916,103 +945,91 @@ export default function App() {
       )}
 
 
-      {/* ════════════ TASKS (OmniFocus) ════════════ */}
+      {/* ════════════ TASKS ════════════ */}
       {section==="tasks" && (
-        <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 54px)"}}>
+        <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 54px)"}}
+          ref={el=>{if(el&&bridgeStatus==="unknown") checkBridge();}}>
 
-          {/* ── Stat bar ── */}
+          {/* Stat bar */}
           <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",borderBottom:`1px solid ${t.border2}`,flexShrink:0}}>
             {[
-              {label:"Flagged",  value:ofStats.flagged, color:t.warning,   icon:"🚩"},
-              {label:"Due Today",value:ofStats.today,   color:t.danger,    icon:"🔴"},
-              {label:"Overdue",  value:ofStats.overdue, color:t.danger,    icon:"⚠️"},
-              {label:"No Date",  value:ofStats.noDate,  color:t.textMuted, icon:"📋"},
+              {label:"Overdue",  value:ofStats.overdue, color:t.danger,    sub:"need attention"},
+              {label:"Due Today",value:ofStats.today,   color:t.warning,   sub:"on the docket"},
+              {label:"Flagged",  value:ofStats.flagged, color:"#F59E0B",   sub:"marked priority"},
+              {label:"No Date",  value:ofStats.noDate,  color:t.textMuted, sub:"someday tasks"},
             ].map(s=>(
               <div key={s.label} className="stat-card">
-                <div style={{fontSize:9,color:t.textDim,textTransform:"uppercase",letterSpacing:".12em",marginBottom:8,fontWeight:500}}>{s.icon} {s.label}</div>
-                <div style={{fontSize:32,fontWeight:600,color:s.color,letterSpacing:"-0.03em",fontVariantNumeric:"tabular-nums"}}>{s.value}</div>
-                <div style={{fontSize:11,color:t.textMuted}}>tasks</div>
+                <div style={{fontSize:9,color:t.textDim,textTransform:"uppercase",letterSpacing:".12em",marginBottom:8,fontWeight:500}}>{s.label}</div>
+                <div style={{fontSize:30,fontWeight:600,color:s.color,letterSpacing:"-0.03em",fontVariantNumeric:"tabular-nums"}}>{s.value}</div>
+                <div style={{fontSize:11,color:t.textMuted}}>{s.sub}</div>
               </div>
             ))}
           </div>
 
-          {/* ── Toolbar ── */}
-          <div style={{display:"flex",alignItems:"center",gap:12,padding:"10px 20px",borderBottom:`1px solid ${t.border2}`,background:t.surface,flexShrink:0,flexWrap:"wrap"}}>
-            {/* View toggle */}
+          {/* Toolbar */}
+          <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 20px",borderBottom:`1px solid ${t.border2}`,background:t.surface,flexShrink:0,flexWrap:"wrap"}}>
             <div style={{display:"flex",gap:6}}>
-              {[["dashboard","📊 Dashboard"],["calendar","📅 Calendar"]].map(([v,l])=>(
+              {[["dashboard","☰ List"],["calendar","📅 Calendar"]].map(([v,l])=>(
                 <button key={v} className={`btn ${ofView===v?"active":""}`} onClick={()=>setOfView(v)}>{l}</button>
               ))}
             </div>
             <div style={{width:1,height:24,background:t.border2}}/>
-            {/* Filter */}
             <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-              {["All","Flagged",...Object.keys(OF_PROJECT_COLORS).filter(k=>k!=="Inbox")].map(f=>(
+              {["All","Overdue","Flagged",...Object.keys(OF_PROJECTS).filter(k=>k!=="Inbox")].map(f=>(
                 <button key={f} className={`btn ${ofFilter===f?"active":""}`}
                   onClick={()=>setOfFilter(f)}
-                  style={ofFilter===f&&f!=="All"&&f!=="Flagged"?{borderColor:ofProjectColor(f),color:ofProjectColor(f),background:ofProjectColor(f)+"1a"}:{}}>
+                  style={ofFilter===f&&!["All","Overdue","Flagged"].includes(f)?{borderColor:ofColor(f),color:ofColor(f),background:ofColor(f)+"1a"}:{}}>
                   {f}
                 </button>
               ))}
             </div>
-            <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center"}}>
-              {/* OmniFocus quick links */}
-              {[
-                {label:"Inbox",    href:"omnifocus:///inbox"},
-                {label:"Today",    href:"omnifocus:///today"},
-                {label:"Flagged",  href:"omnifocus:///flagged"},
-              ].map(l=>(
-                <a key={l.label} href={l.href}
-                  style={{fontSize:11,color:t.textMuted,textDecoration:"none",padding:"4px 10px",border:`1px solid ${t.border3}`,borderRadius:6,
-                    fontFamily:"'Syne',sans-serif",fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",transition:"all .15s"}}
-                  onMouseOver={e=>{e.target.style.color=t.accent;e.target.style.borderColor=t.accent;}}
-                  onMouseOut={e=>{e.target.style.color=t.textMuted;e.target.style.borderColor=t.border3;}}>
-                  {l.label} ↗
+            <div style={{marginLeft:"auto",display:"flex",gap:6}}>
+              {[["Inbox","omnifocus:///inbox"],["Today","omnifocus:///today"],["Flagged","omnifocus:///flagged"],["Forecast","omnifocus:///forecast"]].map(([label,href])=>(
+                <a key={label} href={href} style={{fontSize:10,color:t.textMuted,textDecoration:"none",padding:"4px 10px",border:`1px solid ${t.border3}`,borderRadius:6,fontFamily:"'Syne',sans-serif",fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",transition:"color .15s,border-color .15s"}}
+                  onMouseOver={e=>{e.currentTarget.style.color=t.accent;e.currentTarget.style.borderColor=t.accent;}}
+                  onMouseOut={e=>{e.currentTarget.style.color=t.textMuted;e.currentTarget.style.borderColor=t.border3;}}>
+                  {label} ↗
                 </a>
               ))}
             </div>
           </div>
 
-          {/* ── Content area ── */}
-          <div style={{flex:1,overflow:"auto",display:"flex"}}>
+          <div style={{flex:1,display:"flex",overflow:"hidden"}}>
 
-            {/* ────── DASHBOARD VIEW ────── */}
+            {/* ── LIST VIEW ── */}
             {ofView==="dashboard" && (
-              <div style={{flex:1,padding:20,display:"flex",flexDirection:"column",gap:20}}>
-                {/* Group by project */}
+              <div style={{flex:1,overflow:"auto",padding:20,display:"flex",flexDirection:"column",gap:20}}>
                 {Object.entries(
                   ofFiltered.reduce((acc,t)=>{(acc[t.project]=acc[t.project]||[]).push(t);return acc;},{})
                 ).map(([project,tasks])=>(
                   <div key={project}>
-                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-                      <div style={{width:10,height:10,borderRadius:"50%",background:ofProjectColor(project)}}/>
-                      <div style={{fontSize:11,fontWeight:700,color:t.textMuted,textTransform:"uppercase",letterSpacing:".1em",fontFamily:"'Syne',sans-serif"}}>{project}</div>
-                      <div style={{fontSize:10,color:t.textDim}}>({tasks.length})</div>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                      <div style={{width:8,height:8,borderRadius:"50%",background:ofColor(project),flexShrink:0}}/>
+                      <span style={{fontSize:11,fontWeight:700,color:t.textMuted,textTransform:"uppercase",letterSpacing:".1em",fontFamily:"'Syne',sans-serif"}}>{project}</span>
+                      <span style={{fontSize:10,color:t.textDim}}>({tasks.length})</span>
                     </div>
-                    <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                    <div style={{display:"flex",flexDirection:"column",gap:4}}>
                       {tasks.map(task=>{
                         const due=ofDueLabel(task.dueDate);
-                        const dueColors={overdue:t.danger,today:t.warning,soon:t.accentSub,upcoming:t.textDim};
+                        const dueColor={overdue:t.danger,today:t.warning,soon:t.accentSub,upcoming:t.textDim,nodate:t.textDim}[due];
+                        const dueIcon={overdue:"⚠️ Overdue · ",today:"🔴 Today · ",soon:"🟡 Soon · ",upcoming:"📅 ",nodate:""}[due];
                         return (
-                          <div key={task.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 14px",
-                            background:t.surface,border:`1px solid ${t.border2}`,borderRadius:8,
-                            borderLeft:`3px solid ${ofProjectColor(task.project)}`,transition:"background .12s",cursor:"default"}}
+                          <div key={task.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 14px",
+                            background:t.surface,border:`1px solid ${due==="overdue"?t.dangerBd:t.border2}`,
+                            borderLeft:`3px solid ${ofColor(task.project)}`,borderRadius:7,
+                            transition:"background .12s",cursor:"default",
+                            background:due==="overdue"?t.dangerBg:t.surface}}
                             onMouseOver={e=>e.currentTarget.style.background=t.surface2}
-                            onMouseOut={e=>e.currentTarget.style.background=t.surface}>
-                            {task.flagged && <span style={{fontSize:12}}>🚩</span>}
+                            onMouseOut={e=>e.currentTarget.style.background=due==="overdue"?t.dangerBg:t.surface}>
+                            {task.flagged&&<span style={{fontSize:11,flexShrink:0}}>🚩</span>}
                             <div style={{flex:1,minWidth:0}}>
                               <div style={{fontSize:13,color:t.text,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.name}</div>
-                              {task.dueDate&&<div style={{fontSize:10,color:dueColors[due]||t.textDim,marginTop:2}}>
-                                {due==="overdue"?"⚠ Overdue · ":due==="today"?"🔴 Due today · ":due==="soon"?"🟡 Due soon · ":"📅 "}{task.dueDate}
-                              </div>}
-                              {!task.dueDate&&<div style={{fontSize:10,color:t.textDim,marginTop:2}}>No due date</div>}
+                              {task.dueDate&&<div style={{fontSize:10,color:dueColor,marginTop:2}}>{dueIcon}{task.dueDate}</div>}
                             </div>
                             <a href={`omnifocus:///task/${task.id}`}
-                              title="Open in OmniFocus"
-                              style={{fontSize:11,color:t.textDim,textDecoration:"none",padding:"3px 8px",border:`1px solid ${t.border3}`,
-                                borderRadius:5,flexShrink:0,transition:"all .15s"}}
-                              onMouseOver={e=>{e.target.style.color=ofProjectColor(task.project);e.target.style.borderColor=ofProjectColor(task.project);}}
-                              onMouseOut={e=>{e.target.style.color=t.textDim;e.target.style.borderColor=t.border3;}}>
+                              style={{fontSize:10,color:t.textDim,textDecoration:"none",padding:"3px 8px",border:`1px solid ${t.border3}`,borderRadius:5,flexShrink:0,transition:"all .15s"}}
+                              onMouseOver={e=>{e.currentTarget.style.color=ofColor(task.project);e.currentTarget.style.borderColor=ofColor(task.project);}}
+                              onMouseOut={e=>{e.currentTarget.style.color=t.textDim;e.currentTarget.style.borderColor=t.border3;}}>
                               Open ↗
                             </a>
                           </div>
@@ -1021,26 +1038,22 @@ export default function App() {
                     </div>
                   </div>
                 ))}
-                {ofFiltered.length===0&&(
-                  <div style={{textAlign:"center",color:t.textDim,paddingTop:60,fontSize:14}}>No tasks match this filter.</div>
-                )}
+                {ofFiltered.length===0&&<div style={{textAlign:"center",color:t.textDim,paddingTop:60,fontSize:14}}>No tasks match this filter.</div>}
               </div>
             )}
 
-            {/* ────── CALENDAR VIEW ────── */}
+            {/* ── CALENDAR VIEW ── */}
             {ofView==="calendar" && (
               <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-                {/* Month nav */}
-                <div style={{display:"flex",alignItems:"center",gap:16,padding:"10px 20px",borderBottom:`1px solid ${t.border2}`,background:t.surface,flexShrink:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:12,padding:"10px 20px",borderBottom:`1px solid ${t.border2}`,background:t.surface,flexShrink:0}}>
                   <button className="btn" onClick={()=>setOfMonth(m=>{const n=new Date(m);n.setMonth(n.getMonth()-1);return n;})}>‹</button>
-                  <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:16,color:t.text,minWidth:160,textAlign:"center"}}>
+                  <span style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:15,color:t.text,minWidth:160,textAlign:"center"}}>
                     {MONTH_NAMES[ofMonth.getMonth()]} {ofMonth.getFullYear()}
-                  </div>
+                  </span>
                   <button className="btn" onClick={()=>setOfMonth(m=>{const n=new Date(m);n.setMonth(n.getMonth()+1);return n;})}>›</button>
-                  <div style={{marginLeft:"auto",fontSize:11,color:t.textDim}}>Drag tasks to reschedule</div>
+                  <span style={{marginLeft:"auto",fontSize:10,color:t.textDim}}>Drag tasks to reschedule</span>
                 </div>
-                {/* Grid */}
-                <div style={{flex:1,overflow:"auto",padding:12}}>
+                <div style={{flex:1,overflow:"auto",padding:10}}>
                   {(()=>{
                     const yr=ofMonth.getFullYear(),mo=ofMonth.getMonth();
                     const firstDay=new Date(yr,mo,1).getDay();
@@ -1049,40 +1062,32 @@ export default function App() {
                     const rows=[];for(let i=0;i<cells.length;i+=7)rows.push(cells.slice(i,i+7));
                     return (
                       <table style={{width:"100%",borderCollapse:"collapse",tableLayout:"fixed"}}>
-                        <thead>
-                          <tr>{DOW.map(d=><th key={d} style={{fontSize:10,color:t.textDim,fontWeight:600,padding:"4px 6px",textAlign:"left",textTransform:"uppercase",letterSpacing:".08em"}}>{d}</th>)}</tr>
-                        </thead>
+                        <thead><tr>{DOW.map(d=><th key={d} style={{fontSize:9,color:t.textDim,fontWeight:600,padding:"4px 6px",textAlign:"left",textTransform:"uppercase",letterSpacing:".08em"}}>{d}</th>)}</tr></thead>
                         <tbody>
                           {rows.map((row,ri)=>(
                             <tr key={ri}>
                               {row.map((day,di)=>{
-                                if(!day) return <td key={di} style={{border:`1px solid ${t.border}`,height:100,opacity:.15}}/>;
+                                if(!day) return <td key={di} style={{border:`1px solid ${t.border}`,minHeight:90,opacity:.1}}/>;
                                 const k=`${yr}-${String(mo+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
                                 const isToday=k===dateKey(TODAY);
-                                const tasks=ofByDate[k]||[];
                                 const isDragOver=ofDragOver===k;
+                                const tasks=ofByDate[k]||[];
                                 return (
-                                  <td key={di}
-                                    style={{border:`1px solid ${isToday?t.accent:t.border}`,borderWidth:isToday?2:1,
-                                      padding:"4px 4px 4px",height:100,verticalAlign:"top",
-                                      background:isDragOver?t.cellDrag:t.bg,transition:"background .12s",cursor:"default"}}
+                                  <td key={di} style={{border:`1px solid ${isToday?t.accent:t.border}`,borderWidth:isToday?2:1,
+                                    padding:"4px 4px 4px",minHeight:90,verticalAlign:"top",
+                                    background:isDragOver?t.cellDrag:isToday?t.accent+"0a":t.bg,transition:"background .12s"}}
                                     onDragOver={e=>ofOnDragOver(e,k)} onDragLeave={()=>setOfDragOver(null)} onDrop={e=>ofOnDrop(e,k)}>
                                     <div style={{fontSize:11,fontWeight:600,color:isToday?t.accent:t.textMuted,marginBottom:3}}>{day}</div>
-                                    <div style={{overflow:"hidden",maxHeight:72}}>
-                                      {tasks.slice(0,3).map(task=>(
-                                        <div key={task.id}
-                                          draggable
-                                          onDragStart={e=>ofOnDragStart(e,task)}
-                                          style={{fontSize:10,padding:"2px 5px",borderRadius:3,marginBottom:2,cursor:"grab",
-                                            background:ofProjectColor(task.project)+"22",
-                                            color:ofProjectColor(task.project),
-                                            overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
-                                            borderLeft:`2px solid ${ofProjectColor(task.project)}`}}>
-                                          {task.flagged?"🚩 ":""}{task.name}
-                                        </div>
-                                      ))}
-                                      {tasks.length>3&&<div style={{fontSize:9,color:t.textDim}}>+{tasks.length-3} more</div>}
-                                    </div>
+                                    {tasks.slice(0,3).map(task=>(
+                                      <div key={task.id} draggable onDragStart={e=>ofOnDragStart(e,task)}
+                                        style={{fontSize:9,padding:"2px 5px",borderRadius:3,marginBottom:2,cursor:"grab",
+                                          background:ofColor(task.project)+"22",color:ofColor(task.project),
+                                          overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
+                                          borderLeft:`2px solid ${ofColor(task.project)}`}}>
+                                        {task.flagged?"🚩 ":""}{task.name}
+                                      </div>
+                                    ))}
+                                    {tasks.length>3&&<div style={{fontSize:9,color:t.textDim}}>+{tasks.length-3}</div>}
                                   </td>
                                 );
                               })}
@@ -1096,30 +1101,58 @@ export default function App() {
               </div>
             )}
 
-            {/* ────── PENDING CHANGES SIDEBAR ────── */}
+            {/* ── Pending sync sidebar ── */}
             {pendingChanges.length>0&&(
-              <div style={{width:260,borderLeft:`1px solid ${t.border2}`,padding:16,background:t.surface,flexShrink:0,display:"flex",flexDirection:"column",gap:12}}>
-                <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:13,color:t.accent}}>
-                  Pending Sync ({pendingChanges.length})
+              <div style={{width:240,borderLeft:`1px solid ${t.border2}`,padding:14,background:t.surface,flexShrink:0,display:"flex",flexDirection:"column",gap:10}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:13,color:t.accent}}>Pending ({pendingChanges.length})</div>
+                  {/* Bridge status dot */}
+                  <div style={{display:"flex",alignItems:"center",gap:5}}>
+                    <div style={{width:7,height:7,borderRadius:"50%",background:bridgeStatus==="online"?t.accent:bridgeStatus==="offline"?t.danger:"#64748B"}}/>
+                    <span style={{fontSize:9,color:t.textDim,textTransform:"uppercase",letterSpacing:".06em"}}>
+                      {bridgeStatus==="online"?"Bridge live":bridgeStatus==="offline"?"Bridge offline":"Checking..."}
+                    </span>
+                  </div>
                 </div>
+
                 <div style={{fontSize:10,color:t.textDim,lineHeight:1.5}}>
-                  Drag tasks on the calendar to reschedule. Copy the AppleScript below and run it in Script Editor to sync back to OmniFocus.
+                  {bridgeStatus==="online"
+                    ? "Bridge is running. Click Sync to push changes directly to OmniFocus."
+                    : "Start the bridge server to enable one-click sync, or use the clipboard fallback."}
                 </div>
-                <div style={{display:"flex",flexDirection:"column",gap:6,flex:1,overflow:"auto"}}>
+
+                <div style={{flex:1,overflow:"auto",display:"flex",flexDirection:"column",gap:5}}>
                   {pendingChanges.map(c=>(
-                    <div key={c.id} style={{padding:"8px 10px",background:t.surface2,border:`1px solid ${t.border2}`,borderRadius:6}}>
-                      <div style={{fontSize:11,color:t.text,fontWeight:500,marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</div>
-                      <div style={{fontSize:10,color:t.textDim}}>{c.oldDate||"no date"} → <span style={{color:t.accent}}>{c.newDate}</span></div>
+                    <div key={c.id} style={{padding:"7px 10px",background:t.surface2,border:`1px solid ${t.border2}`,borderRadius:6}}>
+                      <div style={{fontSize:11,color:t.text,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</div>
+                      <div style={{fontSize:10,color:t.textDim,marginTop:2}}>{c.oldDate||"—"} → <span style={{color:t.accent}}>{c.newDate}</span></div>
                     </div>
                   ))}
                 </div>
-                <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                  <button className={`btn ${ofScriptCopied?"active":""}`} style={{width:"100%",textAlign:"center"}} onClick={copyOfScript}>
-                    {ofScriptCopied?"✓ Copied!":"Copy AppleScript"}
+
+                {/* Primary: live sync (when bridge online) */}
+                {bridgeStatus==="online"&&(
+                  <button className={`btn ${syncStatus==="done"?"active":""}`}
+                    style={{width:"100%",textAlign:"center",
+                      background:syncStatus==="error"?t.dangerBg:syncStatus==="done"?t.accent+"1a":"",
+                      borderColor:syncStatus==="error"?t.danger:syncStatus==="done"?t.accent:"",
+                      color:syncStatus==="error"?t.danger:syncStatus==="done"?t.accent:""}}
+                    disabled={syncStatus==="syncing"}
+                    onClick={syncToOmniFocus}>
+                    {syncStatus==="syncing"?"⏳ Syncing...":syncStatus==="done"?"✓ Synced to OmniFocus":syncStatus==="error"?"✗ Sync failed — retry?":"⚡ Sync to OmniFocus"}
                   </button>
-                  <button className="btn" style={{width:"100%",textAlign:"center"}} onClick={()=>setPendingChanges([])}>
-                    Clear
-                  </button>
+                )}
+
+                {/* Fallback: clipboard */}
+                <button className={`btn ${ofScriptCopied?"active":""}`}
+                  style={{width:"100%",textAlign:"center"}}
+                  onClick={copyFallbackScript}>
+                  {ofScriptCopied?"✓ Copied!":bridgeStatus==="online"?"Copy AppleScript (fallback)":"Copy AppleScript"}
+                </button>
+
+                <div style={{display:"flex",gap:6}}>
+                  <button className="btn" style={{flex:1,textAlign:"center"}} onClick={checkBridge}>↻ Check bridge</button>
+                  <button className="btn" style={{flex:1,textAlign:"center"}} onClick={()=>setPendingChanges([])}>Clear</button>
                 </div>
               </div>
             )}
