@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from "recharts";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -321,6 +321,11 @@ export default function App() {
       setBridgeStatus(r.ok ? "online" : "offline");
     } catch { setBridgeStatus("offline"); }
   }, []);
+
+  // Check bridge whenever Tasks tab is opened
+  useEffect(()=>{
+    if (section==="tasks") checkBridge();
+  },[section]);
 
   async function syncToOmniFocus() {
     if (!pendingChanges.length) return;
@@ -947,8 +952,7 @@ export default function App() {
 
       {/* ════════════ TASKS ════════════ */}
       {section==="tasks" && (
-        <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 54px)"}}
-          ref={el=>{if(el&&bridgeStatus==="unknown") checkBridge();}}>
+        <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 54px)"}}>
 
           {/* Stat bar */}
           <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",borderBottom:`1px solid ${t.border2}`,flexShrink:0}}>
