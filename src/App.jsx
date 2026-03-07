@@ -334,7 +334,7 @@ export default function App() {
       const res = await fetch(`${BRIDGE_URL}/sync`, {
         method: "POST",
         headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({changes: pendingChanges.map(c=>({id:c.id, newDate:c.newDate}))})
+        body: JSON.stringify({changes: pendingChanges.map(c=>({id:c.id, name:c.name, newDate:c.newDate}))})
       });
       const data = await res.json();
       if (data.success) {
