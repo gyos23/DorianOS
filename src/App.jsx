@@ -381,10 +381,14 @@ export default function App() {
     try {
       const r = await fetch(`${BRIDGE_URL}/tasks`, {signal: AbortSignal.timeout(30000)});
       const data = await r.json();
-      if (data.success && data.tasks.length) {
+      if (data.success && data.tasks.length >= 10) {
         setOfTasks(data.tasks);
         setRefreshStatus("done");
         setTimeout(() => setRefreshStatus("idle"), 3000);
+      } else if (data.success && data.tasks.length < 10) {
+        console.warn(`Only ${data.tasks.length} tasks returned — keeping existing data`);
+        setRefreshStatus("error");
+        setTimeout(() => setRefreshStatus("idle"), 4000);
       } else throw new Error(data.error || "No tasks returned");
     } catch (err) {
       console.error("Fetch OF tasks failed:", err.message);
