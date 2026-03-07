@@ -379,7 +379,7 @@ export default function App() {
   const fetchOFTasks = useCallback(async () => {
     setRefreshStatus("loading");
     try {
-      const r = await fetch(`${BRIDGE_URL}/tasks`, {signal: AbortSignal.timeout(30000)});
+      const r = await fetch(`${BRIDGE_URL}/tasks`, {signal: AbortSignal.timeout(120000)});
       const data = await r.json();
       if (data.success && data.tasks.length >= 10) {
         setOfTasks(data.tasks);
@@ -1074,7 +1074,7 @@ export default function App() {
                   opacity: bridgeStatus!=="online"?0.4:1,
                   cursor: bridgeStatus!=="online"?"not-allowed":"pointer",
                 }}>
-                {refreshStatus==="loading"?"⏳ Fetching...":refreshStatus==="done"?"✓ Up to date":refreshStatus==="error"?"✗ Fetch failed":"↻ Refresh OF"}
+                {refreshStatus==="loading"?"⏳ Fetching from OF...":refreshStatus==="done"?"✓ Up to date":refreshStatus==="error"?"✗ Fetch failed":"↻ Refresh OF"}
               </button>
               {/* Bridge status — always visible */}
               <div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",
