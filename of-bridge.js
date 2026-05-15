@@ -201,6 +201,128 @@ end tell`;
     return;
   }
 
+  // ── Insights endpoint ─────────────────────────────────────────────────────
+  if (req.method === "GET" && req.url.startsWith("/insights")) {
+    const params = new URL(req.url, "http://localhost").searchParams;
+    const startStr = params.get("start") || (() => { const d = new Date(); d.setDate(d.getDate()-7); return d.toISOString().slice(0,10); })();
+    const endStr   = params.get("end")   || new Date().toISOString().slice(0,10);
+    const startMs  = new Date(startStr + "T00:00:00").getTime();
+    const endMs    = new Date(endStr   + "T23:59:59").getTime();
+
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "ANTHROPIC_API_KEY not set. Start bridge with: ANTHROPIC_API_KEY=xxx node of-bridge.js" }));
+      return;
+    }
+
+    console.log(`[${new Date().toLocaleTimeString()}] Generating insights for ${startStr} → ${endStr}`);
+
+    try {
+      // Find all JSONL conversation files
+      const projectsDir = path.join(os.homedir(), ".claude", "projects");
+      const jsonlFiles = [];
+      function walk(dir) {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+          const full = path.join(dir, entry.name);
+          if (entry.isDirectory()) walk(full);
+          else if (entry.name.endsWith(".jsonl")) jsonlFiles.push(full);
+        }
+      }
+      walk(projectsDir);
+
+      // Extract user messages within date range
+      const messages = [];
+      for (const file of jsonlFiles) {
+        const lines = fs.readFileSync(file, "utf8").split("\n").filter(Boolean);
+        for (const line of lines) {
+          try {
+            const obj = JSON.parse(line);
+            if (obj.type !== "user") continue;
+            const ts = new Date(obj.timestamp).getTime();
+            if (ts < startMs || ts > endMs) continue;
+            const content = obj.message?.content;
+            if (!content) continue;
+            const text = typeof content === "string" ? content
+              : Array.isArray(content) ? content.filter(b => b.type === "text").map(b => b.text).join(" ")
+              : "";
+            const clean = text.replace(/\s+/g, " ").trim();
+            if (clean.length > 20) messages.push({ ts: obj.timestamp, text: clean.slice(0, 800) });
+          } catch {}
+        }
+      }
+
+      messages.sort((a, b) => new Date(a.ts) - new Date(b.ts));
+      console.log(`[${new Date().toLocaleTimeString()}] Found ${messages.length} user messages in range`);
+
+      if (messages.length === 0) {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ themes: [], trends: [], summary: "No conversations found in this date range.", messageCount: 0 }));
+        return;
+      }
+
+      // Build prompt — cap at ~60k chars
+      const combined = messages.map(m => `[${m.ts.slice(0,10)}] ${m.text}`).join("\n");
+      const capped = combined.slice(-60000);
+
+      const prompt = `You are analyzing a person's Claude AI conversation history to surface insights about their thinking, goals, and patterns.
+
+Date range: ${startStr} to ${endStr}
+Total messages: ${messages.length}
+
+Conversation excerpts (user messages only):
+${capped}
+
+Analyze this and return a JSON object with exactly this structure:
+{
+  "summary": "2-3 sentence overview of what dominated this person's thinking this week",
+  "themes": [
+    { "name": "theme name", "description": "1-2 sentences", "color": "one of: #4ADE80 #38bdf8 #F87171 #FB923C #FBBF24 #A78BFA #F472B6 #34D399", "messageCount": N, "examples": ["brief example 1", "brief example 2"] }
+  ],
+  "pillars": [
+    { "name": "pillar name (e.g. Finance, Business, Health, Work, Learning, Personal)", "percentage": N, "color": "hex" }
+  ],
+  "trends": [
+    { "observation": "one concrete pattern or shift you noticed", "type": "positive|neutral|watch" }
+  ],
+  "topQuestions": ["the 3 most telling questions this person is wrestling with"]
+}
+
+Return only valid JSON, no markdown.`;
+
+      const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 2000,
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
+
+      const claudeData = await claudeRes.json();
+      if (!claudeRes.ok) throw new Error(claudeData.error?.message || "Claude API error");
+
+      const raw = claudeData.content?.[0]?.text || "{}";
+      const insights = JSON.parse(raw);
+      insights.messageCount = messages.length;
+      insights.dateRange = { start: startStr, end: endStr };
+
+      console.log(`[${new Date().toLocaleTimeString()}] ✓ Insights generated (${insights.themes?.length || 0} themes)`);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(insights));
+    } catch (err) {
+      console.error(`[${new Date().toLocaleTimeString()}] ✗ Insights error:`, err.message);
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
   // 404
   res.writeHead(404); res.end("Not found");
 });
@@ -213,9 +335,10 @@ server.listen(PORT, "127.0.0.1", () => {
 ╚═══════════════════════════════════════════╝
 
 Endpoints:
-  GET  /health  — status check
-  GET  /tasks   — pull live tasks from OmniFocus
-  POST /sync    — push due date changes to OmniFocus
+  GET  /health           — status check
+  GET  /tasks            — pull live tasks from OmniFocus
+  POST /sync             — push due date changes to OmniFocus
+  GET  /insights?start=  — generate AI insights from Claude conversations
 
 Ready. Waiting for requests...
 Press Ctrl+C to stop.
