@@ -310,6 +310,7 @@ export default function App() {
   const updateDebt = (id,field,val) => setDebts(p=>p.map(d=>d.id===id?{...d,[field]:parseFloat(val)||0}:d));
   const chartData = schedule.filter((_,i)=>i%Math.max(1,Math.floor(schedule.length/60))===0||i===schedule.length-1);
 
+  const [debtSyncStatus, setDebtSyncStatus] = useState("idle");
   const [startBal,       setStartBal]       = useState(4952);
   const [cfBudget,       setCfBudget]       = useState(6500);
   const [numDays,        setNumDays]        = useState(60);
@@ -443,6 +444,47 @@ export default function App() {
       setTimeout(()=>setSyncStatus("idle"), 4000);
     }
   }
+
+  const syncDebts = useCallback(async () => {
+    setDebtSyncStatus("loading");
+    try {
+      const [accRes, assetRes] = await Promise.all([
+        fetch("/api/lunchmoney?endpoint=accounts", {signal: AbortSignal.timeout(15000)}),
+        fetch("/api/lunchmoney?endpoint=assets",   {signal: AbortSignal.timeout(15000)}),
+      ]);
+      const [accData, assetData] = await Promise.all([accRes.json(), assetRes.json()]);
+
+      // Combine plaid credit/loan + manual credit/loan assets
+      const credits = [
+        ...(accData.plaid_accounts ?? []).filter(a => a.type === "credit" && parseFloat(a.balance) > 0),
+        ...(assetData.assets ?? []).filter(a => ["credit","loan"].includes(a.type_name) && parseFloat(a.balance) > 0 && !a.closed_on),
+      ];
+
+      // Name-based matching — normalise and fuzzy match
+      const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g," ").replace(/\s+/g," ").trim();
+      setDebts(prev => prev.map(debt => {
+        const dn = norm(debt.name);
+        const match = credits.find(c => {
+          const cn = norm(c.display_name || c.name || "");
+          // Check if either name contains key words from the other
+          return cn.includes(dn.split(" ")[0]) || dn.includes(cn.split(" ")[0]) ||
+                 cn.split(" ").some(w => w.length > 4 && dn.includes(w));
+        });
+        return match ? {...debt, balance: parseFloat(match.balance)} : debt;
+      }));
+
+      // Update start balance from primary USD checking (Wise USD account)
+      const wise = (accData.plaid_accounts ?? []).find(a => a.id === 350134);
+      if (wise) setStartBal(parseFloat(wise.balance));
+
+      setDebtSyncStatus("done");
+      setTimeout(() => setDebtSyncStatus("idle"), 3000);
+    } catch (err) {
+      console.error("Debt sync failed:", err.message);
+      setDebtSyncStatus("error");
+      setTimeout(() => setDebtSyncStatus("idle"), 4000);
+    }
+  }, []);
 
   function copyFallbackScript(){
     if(!pendingChanges.length) return;
@@ -740,6 +782,9 @@ export default function App() {
               <div style={{fontSize:9,color:t.textDim,textTransform:"uppercase",letterSpacing:".1em",marginBottom:3,fontWeight:500}}>↓ Feeds Cash Flow</div>
               <div style={{color:t.danger,fontWeight:600}}>{fmt(debtMonthly)}/mo on the 1st</div>
             </div>
+            <button className="btn" onClick={syncDebts} disabled={debtSyncStatus==="loading"} style={{marginLeft:"auto",opacity:debtSyncStatus==="loading"?.6:1,flexShrink:0}}>
+              {debtSyncStatus==="loading"?"Syncing…":debtSyncStatus==="done"?"✓ Synced":debtSyncStatus==="error"?"✕ Error":"↻ Sync Balances"}
+            </button>
           </div>
 
           {/* Sub-tabs */}

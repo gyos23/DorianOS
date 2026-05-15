@@ -20,6 +20,8 @@ export default async function handler(req, res) {
   const ALLOWED = {
     "recurring":     "https://dev.lunchmoney.app/v1/recurring_expenses",
     "transactions":  "https://dev.lunchmoney.app/v1/transactions",
+    "accounts":      "https://dev.lunchmoney.app/v1/plaid_accounts",
+    "assets":        "https://dev.lunchmoney.app/v1/assets",
   };
 
   if (!ALLOWED[endpoint]) {
