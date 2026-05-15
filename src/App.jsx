@@ -446,26 +446,53 @@ export default function App() {
   const syncLM = useCallback(async () => {
     setLmSyncStatus("loading");
     try {
-      const today = new Date();
-      const start = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-01`;
-      const end   = new Date(today.getFullYear(), today.getMonth()+3, 0);
-      const endStr = `${end.getFullYear()}-${String(end.getMonth()+1).padStart(2,"0")}-${String(end.getDate()).padStart(2,"0")}`;
       const r = await fetch(`/api/lunchmoney?endpoint=recurring`, {signal: AbortSignal.timeout(15000)});
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const data = await r.json();
       const items = data.recurring_expenses ?? [];
+
+      const today = new Date(); today.setHours(0,0,0,0);
+      const windowEnd = addDays(today, numDays);
+
+      function projectDates(item) {
+        if (!item.billing_date) return [];
+        const anchor = new Date(item.billing_date + "T12:00:00");
+        const dates = [];
+        const advance = (d, cadence) => {
+          switch (cadence) {
+            case "monthly":        return new Date(d.getFullYear(), d.getMonth()+1, d.getDate());
+            case "every 3 months": return new Date(d.getFullYear(), d.getMonth()+3, d.getDate());
+            case "twice a year":   return new Date(d.getFullYear(), d.getMonth()+6, d.getDate());
+            case "yearly":         return new Date(d.getFullYear()+1, d.getMonth(), d.getDate());
+            default:               return null;
+          }
+        };
+        if (item.cadence === "monthly" || item.cadence === "every 3 months" ||
+            item.cadence === "twice a year" || item.cadence === "yearly") {
+          let d = new Date(anchor);
+          // wind forward until >= today
+          while (d < today) { const n = advance(d, item.cadence); if (!n) break; d = n; }
+          while (d <= windowEnd) { dates.push(dateKey(d)); const n = advance(d, item.cadence); if (!n) break; d = n; }
+        } else {
+          // custom / unknown — include if billing_date falls in window
+          if (anchor >= today && anchor <= windowEnd) dates.push(dateKey(anchor));
+        }
+        return dates;
+      }
+
       const mapped = items.flatMap(item => {
-        const billingDates = item.billing_date ? [item.billing_date] : [];
-        return billingDates.map(date => ({
+        const amt = parseFloat(item.amount);
+        return projectDates(item).map(date => ({
           id: `lm-api-${item.id}-${date}`,
           payee: item.payee,
-          amount: Math.abs(item.amount),
+          amount: Math.abs(amt),
           date,
-          type: item.amount < 0 ? "income" : "expense",
+          type: amt < 0 ? "income" : "expense",
           category: item.category_name || "Manual",
           source: "lunchmoney",
         }));
       });
+
       if (mapped.length > 0) setLmData(mapped);
       setLmSyncStatus("done");
       setTimeout(() => setLmSyncStatus("idle"), 3000);
@@ -474,7 +501,7 @@ export default function App() {
       setLmSyncStatus("error");
       setTimeout(() => setLmSyncStatus("idle"), 4000);
     }
-  }, []);
+  }, [numDays]);
 
   const allCharges = useMemo(()=>[...(showLM?lmData:[]),...charges,...debtCharges],[showLM,lmData,charges,debtCharges]);
 
