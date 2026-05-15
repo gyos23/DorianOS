@@ -314,6 +314,8 @@ export default function App() {
   const [cfBudget,       setCfBudget]       = useState(6500);
   const [numDays,        setNumDays]        = useState(60);
   const [showLM,         setShowLM]         = useState(true);
+  const [lmData,         setLmData]         = useState(LM_RECURRING);
+  const [lmSyncStatus,   setLmSyncStatus]   = useState("idle"); // "idle"|"loading"|"done"|"error"
   const [charges,        setCharges]        = useState([]);
   const [dragItem,       setDragItem]       = useState(null);
   const [dragOver,       setDragOver]       = useState(null);
@@ -441,7 +443,40 @@ export default function App() {
   const days  = useMemo(()=>buildDays(TODAY,numDays),[numDays]);
   const weeks = useMemo(()=>buildWeeks(days),[days]);
 
-  const allCharges = useMemo(()=>[...(showLM?LM_RECURRING:[]),...charges,...debtCharges],[showLM,charges,debtCharges]);
+  const syncLM = useCallback(async () => {
+    setLmSyncStatus("loading");
+    try {
+      const today = new Date();
+      const start = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-01`;
+      const end   = new Date(today.getFullYear(), today.getMonth()+3, 0);
+      const endStr = `${end.getFullYear()}-${String(end.getMonth()+1).padStart(2,"0")}-${String(end.getDate()).padStart(2,"0")}`;
+      const r = await fetch(`/api/lunchmoney?endpoint=recurring`, {signal: AbortSignal.timeout(15000)});
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data = await r.json();
+      const items = data.recurring_expenses ?? [];
+      const mapped = items.flatMap(item => {
+        const billingDates = item.billing_date ? [item.billing_date] : [];
+        return billingDates.map(date => ({
+          id: `lm-api-${item.id}-${date}`,
+          payee: item.payee,
+          amount: Math.abs(item.amount),
+          date,
+          type: item.amount < 0 ? "income" : "expense",
+          category: item.category_name || "Manual",
+          source: "lunchmoney",
+        }));
+      });
+      if (mapped.length > 0) setLmData(mapped);
+      setLmSyncStatus("done");
+      setTimeout(() => setLmSyncStatus("idle"), 3000);
+    } catch (err) {
+      console.error("LM sync failed:", err.message);
+      setLmSyncStatus("error");
+      setTimeout(() => setLmSyncStatus("idle"), 4000);
+    }
+  }, []);
+
+  const allCharges = useMemo(()=>[...(showLM?lmData:[]),...charges,...debtCharges],[showLM,lmData,charges,debtCharges]);
 
   const hiddenLMIds = useMemo(()=>new Set(charges.filter(c=>c._originalId).map(c=>c._originalId)),[charges]);
 
@@ -814,6 +849,9 @@ export default function App() {
                 ))}
               </div>
               <button className={`btn ${showLM?"active":""}`} onClick={()=>setShowLM(v=>!v)}>{showLM?"✓ ":""}Lunch Money</button>
+              <button className="btn" onClick={syncLM} disabled={lmSyncStatus==="loading"} style={{opacity:lmSyncStatus==="loading"?.6:1}}>
+                {lmSyncStatus==="loading"?"Syncing…":lmSyncStatus==="done"?"✓ Synced":lmSyncStatus==="error"?"✕ Error":"↻ Sync LM"}
+              </button>
               <div style={{marginLeft:"auto",padding:"6px 14px",background:t.dangerBg,border:`1px solid ${t.dangerBd}`,borderRadius:8,fontSize:12,flexShrink:0}}>
                 <span style={{color:t.textDim,fontSize:10}}>From Payoff: </span>
                 <span style={{color:t.danger,fontWeight:600}}>{fmt(debtMonthly)}/mo</span>
