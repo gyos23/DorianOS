@@ -11,6 +11,16 @@ function fmtFull(n) { return new Intl.NumberFormat("en-US",{style:"currency",cur
 function fmtSigned(n) { return (n>=0?"+":"-")+fmt(n); }
 const uid = () => Math.random().toString(36).slice(2,9);
 
+function useStatusTimer(doneDelay = 3000, errorDelay = 4000) {
+  const [status, setStatus] = useState("idle");
+  const set = useCallback((s) => {
+    setStatus(s);
+    if (s === "done")  setTimeout(() => setStatus("idle"), doneDelay);
+    if (s === "error") setTimeout(() => setStatus("idle"), errorDelay);
+  }, [doneDelay, errorDelay]);
+  return [status, set];
+}
+
 // ─── Themes ──────────────────────────────────────────────────────────────────
 const THEMES = {
   night: {
@@ -286,6 +296,46 @@ function buildWeeks(days) {
 const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
+const BRIDGE_URL = "http://localhost:3131";
+
+function projectDates(item, today, windowEnd) {
+  if (!item.billing_date) return [];
+  const anchor = new Date(item.billing_date + "T12:00:00");
+  const dates = [];
+  const advance = (d, cadence) => {
+    switch (cadence) {
+      case "monthly":        return new Date(d.getFullYear(), d.getMonth()+1, d.getDate());
+      case "every 3 months": return new Date(d.getFullYear(), d.getMonth()+3, d.getDate());
+      case "twice a year":   return new Date(d.getFullYear(), d.getMonth()+6, d.getDate());
+      case "yearly":         return new Date(d.getFullYear()+1, d.getMonth(), d.getDate());
+      default:               return null;
+    }
+  };
+  if (item.cadence === "monthly" || item.cadence === "every 3 months" ||
+      item.cadence === "twice a year" || item.cadence === "yearly") {
+    let d = new Date(anchor);
+    while (d < today) { const n = advance(d, item.cadence); if (!n) break; d = n; }
+    while (d <= windowEnd) { dates.push(dateKey(d)); const n = advance(d, item.cadence); if (!n) break; d = n; }
+  } else {
+    if (anchor >= today && anchor <= windowEnd) dates.push(dateKey(anchor));
+  }
+  return dates;
+}
+
+function ChartTooltip({active, payload, label, t}) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{background:t.surface,border:`1px solid ${t.border2}`,padding:"10px 14px",borderRadius:8,fontSize:12,boxShadow:`0 8px 24px rgba(0,0,0,.25)`}}>
+      <div style={{color:t.accentSub,fontWeight:600,marginBottom:6,fontSize:11}}>Month {label}</div>
+      {payload.map(p=>(
+        <div key={p.name} style={{color:p.color,marginBottom:2}}>
+          <span style={{color:t.textMuted}}>{p.name}: </span>{fmt(p.value)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // App
 // ═════════════════════════════════════════════════════════════════════════════
@@ -310,13 +360,13 @@ export default function App() {
   const updateDebt = (id,field,val) => setDebts(p=>p.map(d=>d.id===id?{...d,[field]:parseFloat(val)||0}:d));
   const chartData = schedule.filter((_,i)=>i%Math.max(1,Math.floor(schedule.length/60))===0||i===schedule.length-1);
 
-  const [debtSyncStatus, setDebtSyncStatus] = useState("idle");
+  const [debtSyncStatus, setDebtSyncStatus] = useStatusTimer();
   const [startBal,       setStartBal]       = useState(4952);
   const [cfBudget,       setCfBudget]       = useState(6500);
   const [numDays,        setNumDays]        = useState(60);
   const [showLM,         setShowLM]         = useState(true);
   const [lmData,         setLmData]         = useState(LM_RECURRING);
-  const [lmSyncStatus,   setLmSyncStatus]   = useState("idle"); // "idle"|"loading"|"done"|"error"
+  const [lmSyncStatus,   setLmSyncStatus]   = useStatusTimer();
   const [charges,        setCharges]        = useState([]);
   const [dragItem,       setDragItem]       = useState(null);
   const [dragOver,       setDragOver]       = useState(null);
@@ -366,9 +416,8 @@ export default function App() {
     setOfDragItem(null);setOfDragOver(null);
   },[ofDragItem]);
 
-  const BRIDGE_URL = "http://localhost:3131";
   const [bridgeStatus, setBridgeStatus] = useState("unknown");
-  const [syncStatus,   setSyncStatus]   = useState("idle");
+  const [syncStatus,   setSyncStatus]   = useStatusTimer();
 
   const checkBridge = useCallback(async () => {
     try {
@@ -377,7 +426,7 @@ export default function App() {
     } catch { setBridgeStatus("offline"); }
   }, []);
 
-  const [refreshStatus, setRefreshStatus] = useState("idle"); // "idle"|"loading"|"done"|"error"
+  const [refreshStatus, setRefreshStatus] = useStatusTimer();
 
   const fetchOFTasks = useCallback(async () => {
     setRefreshStatus("loading");
@@ -388,12 +437,10 @@ export default function App() {
         setOfTasks(data.tasks);
         setOfFilter("All");
         setRefreshStatus("done");
-        setTimeout(() => setRefreshStatus("idle"), 3000);
       } else throw new Error(data.error || "No tasks returned");
     } catch (err) {
       console.error("Fetch OF tasks failed:", err.message);
       setRefreshStatus("error");
-      setTimeout(() => setRefreshStatus("idle"), 4000);
     }
   }, []);
 
@@ -404,7 +451,7 @@ export default function App() {
 
   // ── Insights state ───────────────────────────────────────────────────────────
   const [insightsData,    setInsightsData]   = useState(null);
-  const [insightsStatus,  setInsightsStatus] = useState("idle"); // "idle"|"loading"|"error"
+  const [insightsStatus,  setInsightsStatus] = useStatusTimer();
   const [insightsStart,   setInsightsStart]  = useState(() => { const d=new Date(); d.setDate(d.getDate()-7); return d.toISOString().slice(0,10); });
   const [insightsEnd,     setInsightsEnd]    = useState(() => new Date().toISOString().slice(0,10));
 
@@ -420,7 +467,6 @@ export default function App() {
     } catch (err) {
       console.error("Insights failed:", err.message);
       setInsightsStatus("error");
-      setTimeout(() => setInsightsStatus("idle"), 4000);
     }
   }, [insightsStart, insightsEnd]);
 
@@ -437,11 +483,9 @@ export default function App() {
       if (data.success) {
         setSyncStatus("done");
         setPendingChanges([]);
-        setTimeout(()=>setSyncStatus("idle"), 3000);
       } else throw new Error(data.error);
     } catch {
       setSyncStatus("error");
-      setTimeout(()=>setSyncStatus("idle"), 4000);
     }
   }
 
@@ -478,11 +522,9 @@ export default function App() {
       if (wise) setStartBal(parseFloat(wise.balance));
 
       setDebtSyncStatus("done");
-      setTimeout(() => setDebtSyncStatus("idle"), 3000);
     } catch (err) {
       console.error("Debt sync failed:", err.message);
       setDebtSyncStatus("error");
-      setTimeout(() => setDebtSyncStatus("idle"), 4000);
     }
   }, []);
 
@@ -518,35 +560,9 @@ export default function App() {
       const today = new Date(); today.setHours(0,0,0,0);
       const windowEnd = addDays(today, numDays);
 
-      function projectDates(item) {
-        if (!item.billing_date) return [];
-        const anchor = new Date(item.billing_date + "T12:00:00");
-        const dates = [];
-        const advance = (d, cadence) => {
-          switch (cadence) {
-            case "monthly":        return new Date(d.getFullYear(), d.getMonth()+1, d.getDate());
-            case "every 3 months": return new Date(d.getFullYear(), d.getMonth()+3, d.getDate());
-            case "twice a year":   return new Date(d.getFullYear(), d.getMonth()+6, d.getDate());
-            case "yearly":         return new Date(d.getFullYear()+1, d.getMonth(), d.getDate());
-            default:               return null;
-          }
-        };
-        if (item.cadence === "monthly" || item.cadence === "every 3 months" ||
-            item.cadence === "twice a year" || item.cadence === "yearly") {
-          let d = new Date(anchor);
-          // wind forward until >= today
-          while (d < today) { const n = advance(d, item.cadence); if (!n) break; d = n; }
-          while (d <= windowEnd) { dates.push(dateKey(d)); const n = advance(d, item.cadence); if (!n) break; d = n; }
-        } else {
-          // custom / unknown — include if billing_date falls in window
-          if (anchor >= today && anchor <= windowEnd) dates.push(dateKey(anchor));
-        }
-        return dates;
-      }
-
       const mapped = items.flatMap(item => {
         const amt = parseFloat(item.amount);
-        return projectDates(item).map(date => ({
+        return projectDates(item, today, windowEnd).map(date => ({
           id: `lm-api-${item.id}-${date}`,
           payee: item.payee,
           amount: Math.abs(amt),
@@ -559,11 +575,9 @@ export default function App() {
 
       if (mapped.length > 0) setLmData(mapped);
       setLmSyncStatus("done");
-      setTimeout(() => setLmSyncStatus("idle"), 3000);
     } catch (err) {
       console.error("LM sync failed:", err.message);
       setLmSyncStatus("error");
-      setTimeout(() => setLmSyncStatus("idle"), 4000);
     }
   }, [numDays]);
 
@@ -691,20 +705,6 @@ export default function App() {
     .list-item.debt-payment { background:${t.dangerBg}; border-color:${t.dangerBd}; }
   `;
 
-  const ChartTooltip = ({active,payload,label}) => {
-    if (!active||!payload?.length) return null;
-    return (
-      <div style={{background:t.surface,border:`1px solid ${t.border2}`,padding:"10px 14px",borderRadius:8,fontSize:12,boxShadow:`0 8px 24px rgba(0,0,0,.25)`}}>
-        <div style={{color:t.accentSub,fontWeight:600,marginBottom:6,fontSize:11}}>Month {label}</div>
-        {payload.map(p=>(
-          <div key={p.name} style={{color:p.color,marginBottom:2}}>
-            <span style={{color:t.textMuted}}>{p.name}: </span>{fmt(p.value)}
-          </div>
-        ))}
-      </div>
-    );
-  };
-
   // ─── Render ──────────────────────────────────────────────────────────────────
   return (
     <div style={{fontFamily:"'Inter',system-ui,sans-serif",background:t.bg,minHeight:"100vh",color:t.text,lineHeight:1.5}}>
@@ -810,7 +810,7 @@ export default function App() {
                     <CartesianGrid strokeDasharray="3 3" stroke={t.chartGrid}/>
                     <XAxis dataKey="month" stroke={t.chartAxis} tick={{fill:t.textDim,fontSize:10}} tickFormatter={v=>`M${v}`}/>
                     <YAxis stroke={t.chartAxis} tick={{fill:t.textDim,fontSize:10}} tickFormatter={v=>fmt(v)} width={78}/>
-                    <Tooltip content={<ChartTooltip/>}/>
+                    <Tooltip content={<ChartTooltip t={t}/>}/>
                     <Area type="monotone" dataKey="totalRemaining" name="Total Remaining" stroke={t.accent} fill="url(#dg)" strokeWidth={2.5} dot={false}/>
                   </AreaChart>
                 </ResponsiveContainer>
@@ -822,7 +822,7 @@ export default function App() {
                       <CartesianGrid strokeDasharray="3 3" stroke={t.chartGrid}/>
                       <XAxis dataKey="month" stroke={t.chartAxis} tick={{fill:t.textDim,fontSize:10}} tickFormatter={v=>`M${v}`}/>
                       <YAxis stroke={t.chartAxis} tick={{fill:t.textDim,fontSize:10}} tickFormatter={v=>fmt(v)} width={78}/>
-                      <Tooltip content={<ChartTooltip/>}/>
+                      <Tooltip content={<ChartTooltip t={t}/>}/>
                       <Legend wrapperStyle={{fontSize:11,color:t.textMuted}}/>
                       {debts.filter(d=>d.balance>0).map((d,i)=>(
                         <Line key={d.id} type="monotone" dataKey={d.name} stroke={DEBT_COLORS[i%DEBT_COLORS.length]} strokeWidth={1.5} dot={false}/>
@@ -1249,10 +1249,9 @@ export default function App() {
                         const dueIcon={overdue:"⚠️ Overdue · ",today:"🔴 Today · ",soon:"🟡 Soon · ",upcoming:"📅 ",nodate:""}[due];
                         return (
                           <div key={task.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 14px",
-                            background:t.surface,border:`1px solid ${due==="overdue"?t.dangerBd:t.border2}`,
+                            background:due==="overdue"?t.dangerBg:t.surface,border:`1px solid ${due==="overdue"?t.dangerBd:t.border2}`,
                             borderLeft:`3px solid ${ofColor(task.project)}`,borderRadius:7,
-                            transition:"background .12s",cursor:"default",
-                            background:due==="overdue"?t.dangerBg:t.surface}}
+                            transition:"background .12s",cursor:"default"}}
                             onMouseOver={e=>e.currentTarget.style.background=t.surface2}
                             onMouseOut={e=>e.currentTarget.style.background=due==="overdue"?t.dangerBg:t.surface}>
                             {task.flagged&&<span style={{fontSize:11,flexShrink:0}}>🚩</span>}
