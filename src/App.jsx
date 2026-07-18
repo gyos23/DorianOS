@@ -504,18 +504,33 @@ export default function App() {
         ...(assetData.assets ?? []).filter(a => ["credit","loan"].includes(a.type_name) && parseFloat(a.balance) > 0 && !a.closed_on),
       ];
 
-      // Name-based matching — normalise and fuzzy match
-      const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g," ").replace(/\s+/g," ").trim();
-      setDebts(prev => prev.map(debt => {
-        const dn = norm(debt.name);
-        const match = credits.find(c => {
-          const cn = norm(c.display_name || c.name || "");
-          // Check if either name contains key words from the other
-          return cn.includes(dn.split(" ")[0]) || dn.includes(cn.split(" ")[0]) ||
-                 cn.split(" ").some(w => w.length > 4 && dn.includes(w));
+      // Name-based matching — score by significant word overlap, greedy best-match, no credit reused
+      setDebts(prev => {
+        const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g," ").replace(/\s+/g," ").trim();
+        const sigWords = s => norm(s).split(" ").filter(w => w.length > 3);
+
+        const pairs = prev.flatMap(debt =>
+          credits.map(c => ({
+            debtId: debt.id,
+            credit: c,
+            score: sigWords(debt.name).filter(w => sigWords(c.display_name || c.name || "").includes(w)).length,
+          }))
+        ).filter(p => p.score > 0).sort((a, b) => b.score - a.score);
+
+        const matchMap = new Map();
+        const usedCredits = new Set();
+        for (const { debtId, credit } of pairs) {
+          if (!matchMap.has(debtId) && !usedCredits.has(credit)) {
+            matchMap.set(debtId, credit);
+            usedCredits.add(credit);
+          }
+        }
+
+        return prev.map(debt => {
+          const m = matchMap.get(debt.id);
+          return m ? { ...debt, balance: parseFloat(m.balance) } : debt;
         });
-        return match ? {...debt, balance: parseFloat(match.balance)} : debt;
-      }));
+      });
 
       // Update start balance from primary USD checking (Wise USD account)
       const wise = (accData.plaid_accounts ?? []).find(a => a.id === 350134);
@@ -902,7 +917,14 @@ export default function App() {
                           <td style={{padding:"10px 14px"}}><input type="number" value={d.balance} step="0.01" onChange={e=>updateDebt(d.id,"balance",e.target.value)} style={{width:105}}/></td>
                           <td style={{padding:"10px 14px"}}><input type="number" value={d.apr} step="0.01" onChange={e=>updateDebt(d.id,"apr",e.target.value)} style={{width:72}}/></td>
                           <td style={{padding:"10px 14px"}}><input type="number" value={d.minPayment} step="1" onChange={e=>updateDebt(d.id,"minPayment",e.target.value)} style={{width:72}}/></td>
-                          <td style={{padding:"10px 14px",color:mo?t.accent:t.textDim,fontSize:12}}>{mo?`${pd.toLocaleDateString("en-US",{month:"short",year:"numeric"})} (M${mo})`:"—"}</td>
+                          <td style={{padding:"10px 14px",fontSize:12}}>
+                            {mo
+                              ? <span style={{color:t.accent}}>{pd.toLocaleDateString("en-US",{month:"short",year:"numeric"})} (M{mo})</span>
+                              : d.minPayment < (d.balance * d.apr / 100 / 12)
+                                ? <span style={{color:t.danger}} title="Min payment is below monthly interest — debt grows each month">⚠ min &lt; interest</span>
+                                : <span style={{color:t.textDim}}>—</span>
+                            }
+                          </td>
                           <td style={{padding:"10px 14px",color:t.danger,fontSize:12}}>{acc?fmtFull(acc.totalInterest):"—"}</td>
                         </tr>
                       );
