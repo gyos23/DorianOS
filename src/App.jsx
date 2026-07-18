@@ -2,7 +2,6 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from "recharts";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-const TODAY = new Date();
 const EUR = 1.182;
 function dateKey(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
 function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate()+n); return r; }
@@ -277,10 +276,10 @@ const INITIAL_OF_TASKS = [
 
 function ofDueLabel(dueDate) {
   if (!dueDate) return "nodate";
-  const today = dateKey(TODAY);
+  const today = dateKey(new Date());
   if (dueDate < today) return "overdue";
   if (dueDate === today) return "today";
-  const diff = Math.round((new Date(dueDate+"T12:00:00") - TODAY) / 86400000);
+  const diff = Math.round((new Date(dueDate+"T12:00:00") - new Date()) / 86400000);
   if (diff <= 3) return "soon";
   return "upcoming";
 }
@@ -379,7 +378,7 @@ export default function App() {
   // ── OmniFocus state ──────────────────────────────────────────────────────────
   const [ofTasks,        setOfTasks]        = useState(INITIAL_OF_TASKS);
   const [ofView,         setOfView]         = useState("dashboard");
-  const [ofMonth,        setOfMonth]        = useState(new Date(2026,2,1));
+  const [ofMonth,        setOfMonth]        = useState(() => new Date());
   const [ofFilter,       setOfFilter]       = useState("All");
   const [ofDragItem,     setOfDragItem]     = useState(null);
   const [ofDragOver,     setOfDragOver]     = useState(null);
@@ -388,15 +387,15 @@ export default function App() {
 
   const ofFiltered = useMemo(()=>{
     if (ofFilter==="Flagged") return ofTasks.filter(t=>t.flagged);
-    if (ofFilter==="Overdue") return ofTasks.filter(t=>t.dueDate && t.dueDate<dateKey(TODAY));
+    if (ofFilter==="Overdue") return ofTasks.filter(t=>t.dueDate && t.dueDate<dateKey(new Date()));
     if (ofFilter!=="All") return ofTasks.filter(t=>t.project===ofFilter);
     return ofTasks;
   },[ofTasks,ofFilter]);
 
   const ofStats = useMemo(()=>({
     flagged: ofTasks.filter(t=>t.flagged).length,
-    overdue: ofTasks.filter(t=>t.dueDate&&t.dueDate<dateKey(TODAY)).length,
-    today:   ofTasks.filter(t=>t.dueDate===dateKey(TODAY)).length,
+    overdue: ofTasks.filter(t=>t.dueDate&&t.dueDate<dateKey(new Date())).length,
+    today:   ofTasks.filter(t=>t.dueDate===dateKey(new Date())).length,
     noDate:  ofTasks.filter(t=>!t.dueDate).length,
   }),[ofTasks]);
 
@@ -551,7 +550,7 @@ export default function App() {
   }
 
   const debtCharges = useMemo(()=>{
-    const res=[]; const days=buildDays(TODAY,numDays); const seen=new Set();
+    const res=[]; const days=buildDays(new Date(),numDays); const seen=new Set();
     for (const d of days) {
       if (d.getDate()===1) {
         const mk=`${d.getFullYear()}-${d.getMonth()}`;
@@ -561,7 +560,7 @@ export default function App() {
     return res;
   },[numDays,debtMonthly]);
 
-  const days  = useMemo(()=>buildDays(TODAY,numDays),[numDays]);
+  const days  = useMemo(()=>buildDays(new Date(),numDays),[numDays]);
   const weeks = useMemo(()=>buildWeeks(days),[days]);
 
   const syncLM = useCallback(async () => {
@@ -640,7 +639,7 @@ export default function App() {
 
   const selCharges = selectedDay ? visForDay(selectedDay) : [];
   const selStats   = selectedDay ? runBal[selectedDay] : null;
-  const todayEOD   = runBal[dateKey(TODAY)]?.balance ?? startBal;
+  const todayEOD   = runBal[dateKey(new Date())]?.balance ?? startBal;
 
   // ── Dynamic CSS ──────────────────────────────────────────────────────────────
   const CSS = `
@@ -998,9 +997,9 @@ export default function App() {
               {days.filter(d=>{
                 const k=dateKey(d);
                 const vis=visForDay(k).filter(c=>filterCat==="All"||c.category===filterCat||(filterCat==="income"&&c.type==="income"));
-                return vis.length>0||k===dateKey(TODAY);
+                return vis.length>0||k===dateKey(new Date());
               }).map((d,idx,arr)=>{
-                const k=dateKey(d); const stats=runBal[k]; const isToday=k===dateKey(TODAY);
+                const k=dateKey(d); const stats=runBal[k]; const isToday=k===dateKey(new Date());
                 const vis=visForDay(k).filter(c=>filterCat==="All"||c.category===filterCat||(filterCat==="income"&&c.type==="income"));
                 const inc=vis.filter(c=>c.type==="income"); const exp=vis.filter(c=>c.type==="expense");
                 return (
@@ -1094,7 +1093,7 @@ export default function App() {
                               <tr key={wi}>
                                 {wk.map((d,di)=>{
                                   if(!d)return <td key={di} style={{border:`1px solid ${t.border}`,minHeight:88,opacity:.15}}/>;
-                                  const k=dateKey(d); const isToday=k===dateKey(TODAY); const isSel=selectedDay===k;
+                                  const k=dateKey(d); const isToday=k===dateKey(new Date()); const isSel=selectedDay===k;
                                   const stats=runBal[k];
                                   const vis=visForDay(k).filter(c=>filterCat==="All"||c.category===filterCat||(filterCat==="income"&&c.type==="income"));
                                   return (
@@ -1324,7 +1323,7 @@ export default function App() {
                               {row.map((day,di)=>{
                                 if(!day) return <td key={di} style={{border:`1px solid ${t.border}`,minHeight:90,opacity:.1}}/>;
                                 const k=`${yr}-${String(mo+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
-                                const isToday=k===dateKey(TODAY);
+                                const isToday=k===dateKey(new Date());
                                 const isDragOver=ofDragOver===k;
                                 const tasks=ofByDate[k]||[];
                                 return (
