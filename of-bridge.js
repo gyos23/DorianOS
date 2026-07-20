@@ -82,7 +82,7 @@ const server = http.createServer(async (req, res) => {
   if (allowed) {
     res.setHeader("Access-Control-Allow-Origin", origin || "*");
   }
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
   // Preflight
@@ -320,6 +320,84 @@ Return only valid JSON, no markdown.`;
       res.writeHead(500, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: err.message }));
     }
+    return;
+  }
+
+  // ── Financial advice endpoint ─────────────────────────────────────────────
+  if (req.method === "POST" && req.url === "/financial-advice") {
+    let body = "";
+    req.on("data", chunk => body += chunk);
+    req.on("end", async () => {
+      try {
+        const { debts, startBal, debtMonthly, cfBudget, forecasts, cashZeroDate } = JSON.parse(body);
+
+        const apiKey = process.env.ANTHROPIC_API_KEY;
+        if (!apiKey) {
+          res.writeHead(500, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "ANTHROPIC_API_KEY not set" }));
+          return;
+        }
+
+        const totalDebt = debts.reduce((s, d) => s + d.balance, 0);
+        const debtLines = debts
+          .filter(d => d.balance > 0)
+          .sort((a, b) => b.balance - a.balance)
+          .map(d => `- ${d.name}: $${d.balance.toFixed(2)} at ${d.apr}% APR, $${d.minPayment}/mo min`)
+          .join("\n");
+
+        const prompt = `You are a direct, no-fluff personal finance advisor. Analyze this financial snapshot and return prioritized, actionable advice. Be specific — name actual accounts, amounts, and dates where relevant.
+
+DEBTS (sorted by balance):
+${debtLines}
+Total debt: $${totalDebt.toFixed(2)}
+Monthly debt payments: $${debtMonthly.toFixed(2)}
+
+CASH FLOW:
+Current balance: $${startBal.toFixed(2)}
+Monthly spending budget: $${cfBudget.toFixed(2)}
+End of today: ${forecasts.eod != null ? "$" + forecasts.eod.toFixed(2) : "unknown"}
+End of week (${forecasts.eowLabel}): ${forecasts.eow != null ? "$" + forecasts.eow.toFixed(2) : "outside forecast window"}
+End of month (${forecasts.eomLabel}): ${forecasts.eom != null ? "$" + forecasts.eom.toFixed(2) : "outside forecast window"}
+${cashZeroDate ? `⚠ Balance goes NEGATIVE on ${cashZeroDate} — this is urgent` : "Balance stays positive through the forecast window"}
+
+Return JSON only, no markdown, no code fences:
+{
+  "summary": "2-3 direct sentences: honest assessment of their situation and the single most important thing to focus on right now",
+  "freeFlow": <number: estimated monthly discretionary cash after all known debt payments and budget commitments — can be negative>,
+  "debtFocus": "<one sentence: which specific debt to attack hardest right now and the exact reason why>",
+  "immediate": ["specific action 1 (do today or this week)", "action 2", "action 3"],
+  "thisMonth": ["specific thing to do or avoid this month 1", "thing 2"],
+  "watchOut": ["specific risk or pattern to watch 1", "risk 2"]
+}`;
+
+        console.log(`[${new Date().toLocaleTimeString()}] Generating financial advice...`);
+        const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "claude-haiku-4-5-20251001",
+            max_tokens: 1000,
+            messages: [{ role: "user", content: prompt }],
+          }),
+        });
+
+        const claudeData = await claudeRes.json();
+        if (!claudeRes.ok) throw new Error(claudeData.error?.message || "Claude API error");
+
+        const advice = JSON.parse(claudeData.content?.[0]?.text || "{}");
+        console.log(`[${new Date().toLocaleTimeString()}] ✓ Financial advice generated`);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(advice));
+      } catch (err) {
+        console.error(`[${new Date().toLocaleTimeString()}] ✗ Financial advice error:`, err.message);
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
     return;
   }
 
