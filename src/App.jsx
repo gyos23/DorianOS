@@ -472,26 +472,6 @@ export default function App() {
     }
   }, [insightsStart, insightsEnd]);
 
-  const fetchAdvice = useCallback(async () => {
-    setAdviceStatus("loading");
-    setAdviceData(null);
-    try {
-      const r = await fetch(`${BRIDGE_URL}/financial-advice`, {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({debts, startBal, debtMonthly, cfBudget, forecasts, cashZeroDate}),
-        signal: AbortSignal.timeout(30000),
-      });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error || "Bridge error");
-      setAdviceData(data);
-      setAdviceStatus("idle");
-    } catch (err) {
-      console.error("Financial advice failed:", err.message);
-      setAdviceStatus("error");
-    }
-  }, [debts, startBal, debtMonthly, cfBudget, forecasts, cashZeroDate]);
-
   async function syncToOmniFocus() {
     if (!pendingChanges.length) return;
     setSyncStatus("syncing");
@@ -685,6 +665,26 @@ export default function App() {
       eomLabel: eom.toLocaleDateString("en-US", {month:"long", day:"numeric"}),
     };
   }, [runBal]);
+
+  const fetchAdvice = useCallback(async () => {
+    setAdviceStatus("loading");
+    setAdviceData(null);
+    try {
+      const r = await fetch(`${BRIDGE_URL}/financial-advice`, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({debts, startBal, debtMonthly, cfBudget, forecasts, cashZeroDate}),
+        signal: AbortSignal.timeout(30000),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "Bridge error");
+      setAdviceData(data);
+      setAdviceStatus("idle");
+    } catch (err) {
+      console.error("Financial advice failed:", err.message);
+      setAdviceStatus("error");
+    }
+  }, [debts, startBal, debtMonthly, cfBudget, forecasts, cashZeroDate]);
 
   // ── Dynamic CSS ──────────────────────────────────────────────────────────────
   const CSS = `
