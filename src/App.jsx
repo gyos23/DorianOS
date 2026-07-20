@@ -443,9 +443,9 @@ export default function App() {
     }
   }, []);
 
-  // Check bridge whenever Tasks tab is opened
+  // Check bridge whenever Tasks or Insights tab is opened
   useEffect(()=>{
-    if (section==="tasks") checkBridge();
+    if (section==="tasks" || section==="insights") checkBridge();
   },[section]);
 
   // ── Insights state ───────────────────────────────────────────────────────────
