@@ -641,6 +641,28 @@ export default function App() {
   const selStats   = selectedDay ? runBal[selectedDay] : null;
   const todayEOD   = runBal[dateKey(new Date())]?.balance ?? startBal;
 
+  const cashZeroDate = useMemo(() => {
+    for (const d of days) {
+      const k = dateKey(d);
+      if ((runBal[k]?.balance ?? 0) < 0) return k;
+    }
+    return null;
+  }, [days, runBal]);
+
+  const forecasts = useMemo(() => {
+    const now = new Date();
+    const eow = new Date(now); eow.setDate(now.getDate() + (5 - now.getDay() + 7) % 7);
+    const eom = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return {
+      eod: runBal[dateKey(now)]?.balance ?? null,
+      eodLabel: "today",
+      eow: runBal[dateKey(eow)]?.balance ?? null,
+      eowLabel: eow.toLocaleDateString("en-US", {month:"short", day:"numeric"}),
+      eom: runBal[dateKey(eom)]?.balance ?? null,
+      eomLabel: eom.toLocaleDateString("en-US", {month:"long", day:"numeric"}),
+    };
+  }, [runBal]);
+
   // ── Dynamic CSS ──────────────────────────────────────────────────────────────
   const CSS = `
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Syne:wght@700;800&display=swap');
@@ -989,6 +1011,30 @@ export default function App() {
                 }}>{cat}</button>
               ))}
             </div>
+          </div>
+
+          {/* ── Forecast strip ── */}
+          <div style={{display:"grid",gridTemplateColumns:`repeat(${3+(cashZeroDate?1:0)},1fr)`,borderBottom:`1px solid ${t.border2}`}}>
+            {[
+              {label:"End of Day",   bal:forecasts.eod, sub:forecasts.eodLabel},
+              {label:"End of Week",  bal:forecasts.eow, sub:forecasts.eowLabel},
+              {label:"End of Month", bal:forecasts.eom, sub:forecasts.eomLabel},
+            ].map(({label,bal,sub})=>(
+              <div key={label} className="stat-card">
+                <div style={{fontSize:9,color:t.textDim,textTransform:"uppercase",letterSpacing:".12em",marginBottom:6,fontWeight:500}}>{label}</div>
+                <div style={{fontSize:22,fontWeight:700,color:bal==null?t.textDim:bal>=0?t.accent:t.danger,fontVariantNumeric:"tabular-nums"}}>{bal!=null?fmt(bal):"—"}</div>
+                <div style={{fontSize:10,color:t.textMuted,marginTop:2}}>{sub}</div>
+              </div>
+            ))}
+            {cashZeroDate&&(
+              <div className="stat-card" style={{background:t.dangerBg,borderLeft:`1px solid ${t.dangerBd}`}}>
+                <div style={{fontSize:9,color:t.danger,textTransform:"uppercase",letterSpacing:".12em",marginBottom:6,fontWeight:500}}>⚠ Cash Negative</div>
+                <div style={{fontSize:22,fontWeight:700,color:t.danger}}>
+                  {new Date(cashZeroDate+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"})}
+                </div>
+                <div style={{fontSize:10,color:t.danger,opacity:.8,marginTop:2}}>balance goes negative</div>
+              </div>
+            )}
           </div>
 
           {/* ── LIST VIEW ── */}
