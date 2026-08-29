@@ -3,7 +3,7 @@ import { THEMES } from "./data/themes.js";
 import { INITIAL_DEBTS } from "./data/debts.js";
 import { LM_RECURRING } from "./data/cashflow.js";
 import { computeAmortization } from "./utils/amortization.js";
-import { dateKey, addDays, projectDates } from "./utils/dates.js";
+import { dateKey, addDays, projectDates, buildDays } from "./utils/dates.js";
 import { useStatusTimer } from "./hooks/useStatusTimer.js";
 import { getBridgeUrl } from "./utils/config.js";
 import { Navbar } from "./components/layout/Navbar.jsx";
@@ -179,6 +179,54 @@ export default function App() {
     return startBal + inc - exp;
   }, [lmData, startBal]);
 
+  const { forecasts, cashZeroDate } = useMemo(() => {
+    const days = buildDays(new Date(), 60);
+    const m = {};
+    for (const c of lmData) {
+      if (!m[c.date]) m[c.date] = [];
+      m[c.date].push(c);
+    }
+    const seen = new Set();
+    for (const d of days) {
+      if (d.getDate() === 1) {
+        const mk = `${d.getFullYear()}-${d.getMonth()}`;
+        if (!seen.has(mk)) {
+          seen.add(mk);
+          const k = dateKey(d);
+          if (!m[k]) m[k] = [];
+          m[k].push({ amount: debtMonthly, type: "expense" });
+        }
+      }
+    }
+    let bal = startBal;
+    const runBal = {};
+    let zeroDate = null;
+    for (const d of days) {
+      const k = dateKey(d);
+      const dc = m[k] || [];
+      const inc = dc.filter((c) => c.type === "income").reduce((s, c) => s + c.amount, 0);
+      const exp = dc.filter((c) => c.type === "expense").reduce((s, c) => s + c.amount, 0);
+      bal += inc - exp;
+      runBal[k] = { balance: bal };
+      if (bal < 0 && !zeroDate) zeroDate = k;
+    }
+    const now = new Date();
+    const eow = new Date(now);
+    eow.setDate(now.getDate() + ((5 - now.getDay() + 7) % 7));
+    const eom = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return {
+      forecasts: {
+        eod: runBal[dateKey(now)]?.balance ?? null,
+        eodLabel: "today",
+        eow: runBal[dateKey(eow)]?.balance ?? null,
+        eowLabel: eow.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        eom: runBal[dateKey(eom)]?.balance ?? null,
+        eomLabel: eom.toLocaleDateString("en-US", { month: "long", day: "numeric" }),
+      },
+      cashZeroDate: zeroDate,
+    };
+  }, [lmData, startBal, debtMonthly]);
+
   // CSS variables dynamically bound to theme
   const cssVariables = useMemo(
     () => ({
@@ -294,6 +342,8 @@ export default function App() {
             startBal={startBal}
             debtMonthly={debtMonthly}
             cfBudget={cfBudget}
+            forecasts={forecasts}
+            cashZeroDate={cashZeroDate}
             bridgeStatus={bridgeStatus}
             t={t}
           />

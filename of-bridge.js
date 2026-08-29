@@ -333,7 +333,14 @@ Return only valid JSON, no markdown.`;
     req.on("data", chunk => body += chunk);
     req.on("end", async () => {
       try {
-        const { debts, startBal, debtMonthly, cfBudget, forecasts, cashZeroDate } = JSON.parse(body);
+        const {
+          debts = [],
+          startBal = 0,
+          debtMonthly = 0,
+          cfBudget = 0,
+          forecasts = {},
+          cashZeroDate = null,
+        } = JSON.parse(body || "{}");
 
         const apiKey = process.env.ANTHROPIC_API_KEY;
         if (!apiKey) {
@@ -342,11 +349,11 @@ Return only valid JSON, no markdown.`;
           return;
         }
 
-        const totalDebt = debts.reduce((s, d) => s + d.balance, 0);
+        const totalDebt = debts.reduce((s, d) => s + (d.balance || 0), 0);
         const debtLines = debts
-          .filter(d => d.balance > 0)
+          .filter(d => (d.balance || 0) > 0)
           .sort((a, b) => b.balance - a.balance)
-          .map(d => `- ${d.name}: $${d.balance.toFixed(2)} at ${d.apr}% APR, $${d.minPayment}/mo min`)
+          .map(d => `- ${d.name}: $${(d.balance || 0).toFixed(2)} at ${d.apr}% APR, $${d.minPayment}/mo min`)
           .join("\n");
 
         const prompt = `You are a direct, no-fluff personal finance advisor. Analyze this financial snapshot and return prioritized, actionable advice. Be specific — name actual accounts, amounts, and dates where relevant.
@@ -359,9 +366,9 @@ Monthly debt payments: $${debtMonthly.toFixed(2)}
 CASH FLOW:
 Current balance: $${startBal.toFixed(2)}
 Monthly spending budget: $${cfBudget.toFixed(2)}
-End of today: ${forecasts.eod != null ? "$" + forecasts.eod.toFixed(2) : "unknown"}
-End of week (${forecasts.eowLabel}): ${forecasts.eow != null ? "$" + forecasts.eow.toFixed(2) : "outside forecast window"}
-End of month (${forecasts.eomLabel}): ${forecasts.eom != null ? "$" + forecasts.eom.toFixed(2) : "outside forecast window"}
+End of today: ${forecasts?.eod != null ? "$" + forecasts.eod.toFixed(2) : "unknown"}
+End of week (${forecasts?.eowLabel || "this week"}): ${forecasts?.eow != null ? "$" + forecasts.eow.toFixed(2) : "outside forecast window"}
+End of month (${forecasts?.eomLabel || "this month"}): ${forecasts?.eom != null ? "$" + forecasts.eom.toFixed(2) : "outside forecast window"}
 ${cashZeroDate ? `⚠ Balance goes NEGATIVE on ${cashZeroDate} — this is urgent` : "Balance stays positive through the forecast window"}
 
 Return JSON only, no markdown, no code fences:

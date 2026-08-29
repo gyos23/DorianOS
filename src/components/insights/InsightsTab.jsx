@@ -9,6 +9,8 @@ export default function InsightsTab({
   startBal,
   debtMonthly,
   cfBudget,
+  forecasts,
+  cashZeroDate,
   bridgeStatus,
   t,
 }) {
@@ -51,7 +53,7 @@ export default function InsightsTab({
       const r = await fetch(`${bridgeUrl}/financial-advice`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ debts, startBal, debtMonthly, cfBudget }),
+        body: JSON.stringify({ debts, startBal, debtMonthly, cfBudget, forecasts, cashZeroDate }),
         signal: AbortSignal.timeout(30000),
       });
       const data = await r.json();
