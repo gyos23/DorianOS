@@ -23,6 +23,10 @@ export default function App() {
   const t = THEMES[themeName];
 
   const [section, setSection] = useState("payoff");
+  const [visitedSections, setVisitedSections] = useState(() => new Set(["payoff"]));
+  useEffect(() => {
+    setVisitedSections((prev) => (prev.has(section) ? prev : new Set(prev).add(section)));
+  }, [section]);
   const [debts, setDebts] = useState(INITIAL_DEBTS);
   const [strategy, setStrategy] = useState("avalanche");
   const [extraPayment, setExtraPayment] = useState(500);
@@ -288,65 +292,73 @@ export default function App() {
       />
 
       <Suspense fallback={<TabLoading />}>
-        {section === "payoff" && (
-          <DebtPayoffTab
-            debts={debts}
-            updateDebt={updateDebt}
-            strategy={strategy}
-            setStrategy={setStrategy}
-            extraPayment={extraPayment}
-            setExtraPayment={setExtraPayment}
-            schedule={schedule}
-            accounts={accounts}
-            debtMonthly={debtMonthly}
-            totalDebt={totalDebt}
-            totalInterestPaid={totalInterestPaid}
-            payoffMonths={payoffMonths}
-            payoffDate={payoffDate}
-            syncDebts={syncDebts}
-            debtSyncStatus={debtSyncStatus}
-            t={t}
-          />
+        {visitedSections.has("payoff") && (
+          <div style={{ display: section === "payoff" ? "contents" : "none" }}>
+            <DebtPayoffTab
+              debts={debts}
+              updateDebt={updateDebt}
+              strategy={strategy}
+              setStrategy={setStrategy}
+              extraPayment={extraPayment}
+              setExtraPayment={setExtraPayment}
+              schedule={schedule}
+              accounts={accounts}
+              debtMonthly={debtMonthly}
+              totalDebt={totalDebt}
+              totalInterestPaid={totalInterestPaid}
+              payoffMonths={payoffMonths}
+              payoffDate={payoffDate}
+              syncDebts={syncDebts}
+              debtSyncStatus={debtSyncStatus}
+              t={t}
+            />
+          </div>
         )}
 
-        {section === "cashflow" && (
-          <CashFlowTab
-            startBal={startBal}
-            setStartBal={setStartBal}
-            cfBudget={cfBudget}
-            setCfBudget={setCfBudget}
-            debtMonthly={debtMonthly}
-            lmData={lmData}
-            setLmData={setLmData}
-            lmSyncStatus={lmSyncStatus}
-            syncLM={syncLM}
-            t={t}
-          />
+        {visitedSections.has("cashflow") && (
+          <div style={{ display: section === "cashflow" ? "contents" : "none" }}>
+            <CashFlowTab
+              startBal={startBal}
+              setStartBal={setStartBal}
+              cfBudget={cfBudget}
+              setCfBudget={setCfBudget}
+              debtMonthly={debtMonthly}
+              lmData={lmData}
+              setLmData={setLmData}
+              lmSyncStatus={lmSyncStatus}
+              syncLM={syncLM}
+              t={t}
+            />
+          </div>
         )}
 
-        {section === "tasks" && (
-          <TasksTab
-            bridgeStatus={bridgeStatus}
-            checkBridge={checkBridge}
-            syncStatus={syncStatus}
-            setSyncStatus={setSyncStatus}
-            refreshStatus={refreshStatus}
-            setRefreshStatus={setRefreshStatus}
-            t={t}
-          />
+        {visitedSections.has("tasks") && (
+          <div style={{ display: section === "tasks" ? "contents" : "none" }}>
+            <TasksTab
+              bridgeStatus={bridgeStatus}
+              checkBridge={checkBridge}
+              syncStatus={syncStatus}
+              setSyncStatus={setSyncStatus}
+              refreshStatus={refreshStatus}
+              setRefreshStatus={setRefreshStatus}
+              t={t}
+            />
+          </div>
         )}
 
-        {section === "insights" && (
-          <InsightsTab
-            debts={debts}
-            startBal={startBal}
-            debtMonthly={debtMonthly}
-            cfBudget={cfBudget}
-            forecasts={forecasts}
-            cashZeroDate={cashZeroDate}
-            bridgeStatus={bridgeStatus}
-            t={t}
-          />
+        {visitedSections.has("insights") && (
+          <div style={{ display: section === "insights" ? "contents" : "none" }}>
+            <InsightsTab
+              debts={debts}
+              startBal={startBal}
+              debtMonthly={debtMonthly}
+              cfBudget={cfBudget}
+              forecasts={forecasts}
+              cashZeroDate={cashZeroDate}
+              bridgeStatus={bridgeStatus}
+              t={t}
+            />
+          </div>
         )}
       </Suspense>
     </div>
