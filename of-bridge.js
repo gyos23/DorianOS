@@ -212,7 +212,7 @@ end tell`;
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
       res.writeHead(500, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "ANTHROPIC_API_KEY not set. Start bridge with: ANTHROPIC_API_KEY=xxx node of-bridge.js" }));
+      res.end(JSON.stringify({ error: "ANTHROPIC_API_KEY not set. Start bridge with: ANTHROPIC_API_KEY=your_key node of-bridge.js" }));
       return;
     }
 

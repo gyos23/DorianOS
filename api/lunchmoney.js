@@ -40,6 +40,7 @@ export default async function handler(req, res) {
         "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json",
       },
+      signal: AbortSignal.timeout(10000),
     });
 
     const data = await lmRes.json();
