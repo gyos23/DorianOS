@@ -12,6 +12,10 @@ const http = require("http");
 const { exec } = require("child_process");
 
 const PORT = 3131;
+// Claude sometimes wraps JSON replies in a ```json fence despite instructions not to.
+function stripJsonFence(text) {
+  return text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
+}
 // Only accept requests from your Vercel app (and localhost for testing)
 const ALLOWED_ORIGINS = [
   "http://localhost:5173",
@@ -308,7 +312,7 @@ Return only valid JSON, no markdown.`;
       if (!claudeRes.ok) throw new Error(claudeData.error?.message || "Claude API error");
 
       const raw = claudeData.content?.[0]?.text || "{}";
-      const insights = JSON.parse(raw);
+      const insights = JSON.parse(stripJsonFence(raw));
       insights.messageCount = messages.length;
       insights.dateRange = { start: startStr, end: endStr };
 
@@ -388,7 +392,7 @@ Return JSON only, no markdown, no code fences:
         const claudeData = await claudeRes.json();
         if (!claudeRes.ok) throw new Error(claudeData.error?.message || "Claude API error");
 
-        const advice = JSON.parse(claudeData.content?.[0]?.text || "{}");
+        const advice = JSON.parse(stripJsonFence(claudeData.content?.[0]?.text || "{}"));
         console.log(`[${new Date().toLocaleTimeString()}] ✓ Financial advice generated`);
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify(advice));
