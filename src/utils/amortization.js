@@ -9,8 +9,16 @@ export function computeAmortization(debts, strategy, extraPayment) {
       paidOffMonth: null,
     }));
 
-  const totalMin = accounts.reduce((s, d) => s + d.minPayment, 0);
-  const monthlyBudget = totalMin + extraPayment;
+  // Per-account floor: never less than that card's own interest, even if its
+  // stated minimum is lower — otherwise "$0 extra" can still let a card grow.
+  // Balances only shrink from here on (each account always gets at least its
+  // own interest covered), so interest cost never exceeds this month's, making
+  // this a safe fixed floor for every month that follows.
+  const breakeven = accounts.reduce(
+    (s, d) => s + Math.max(d.minPayment, (d.balance * d.apr) / 100 / 12),
+    0
+  );
+  const monthlyBudget = breakeven + extraPayment;
   const schedule = [];
   let month = 0;
 
@@ -20,7 +28,9 @@ export function computeAmortization(debts, strategy, extraPayment) {
       if (a.remaining <= 0) return a;
       const interest = (a.remaining * a.apr) / 100 / 12;
       const nr = a.remaining + interest;
-      const pmt = Math.min(a.minPayment, nr);
+      // Never pay less than this account's own interest — that's what "minimum"
+      // should mean, even if the card's stated minimum is lower.
+      const pmt = Math.min(Math.max(a.minPayment, interest), nr);
       return {
         ...a,
         remaining: nr - pmt,
@@ -31,7 +41,7 @@ export function computeAmortization(debts, strategy, extraPayment) {
       };
     });
 
-    let avail = monthlyBudget - accounts.reduce((s, a) => s + (a._minPaid || 0), 0);
+    let avail = Math.max(0, monthlyBudget - accounts.reduce((s, a) => s + (a._minPaid || 0), 0));
     let sorted = [...accounts];
     if (strategy === "avalanche") sorted.sort((a, b) => b.apr - a.apr);
     else if (strategy === "snowball") sorted.sort((a, b) => a.remaining - b.remaining);
@@ -60,5 +70,14 @@ export function computeAmortization(debts, strategy, extraPayment) {
     schedule.push(pt);
   }
 
-  return { schedule, accounts, monthlyBudget };
+  const startingTotal = accounts.reduce((s, a) => s + a.balance, 0);
+  const finalTotal = accounts.reduce((s, a) => s + a.remaining, 0);
+  const neverPaidOff = finalTotal > 0.005;
+  // With the floor above, no account can ever grow — but if every account's
+  // floor payment is exactly its own interest (no minPayment exceeds it),
+  // principal never moves and the balance sits flat forever. That's a real
+  // stalemate, distinct from a plan that's just slow and needs >30 years.
+  const stalled = neverPaidOff && finalTotal >= startingTotal - 0.5;
+
+  return { schedule, accounts, monthlyBudget, breakeven, neverPaidOff, stalled };
 }

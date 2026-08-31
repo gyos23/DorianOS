@@ -14,6 +14,7 @@ export function Navbar({
   setSection,
   debtMonthly,
   payoffDate,
+  stalled,
   todayEOD,
   themeName,
   setThemeName,
@@ -66,7 +67,11 @@ export function Navbar({
           { label: "Debt/mo", value: fmt(debtMonthly), color: t.danger },
           {
             label: "Debt-free",
-            value: payoffDate.toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+            value: payoffDate
+              ? payoffDate.toLocaleDateString("en-US", { month: "short", year: "numeric" })
+              : stalled
+              ? "Never"
+              : "30+ yrs",
             color: t.accent,
           },
           { label: "Cash today", value: fmt(todayEOD), color: t.accentSub },
