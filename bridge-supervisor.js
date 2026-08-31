@@ -113,7 +113,16 @@ function runLaunchctl(args) {
 const server = http.createServer((req, res) => {
   const origin = req.headers.origin || "";
   const allowed = isAllowedOrigin(origin);
-  if (allowed) res.setHeader("Access-Control-Allow-Origin", origin || "*");
+  if (allowed) {
+    res.setHeader("Access-Control-Allow-Origin", origin || "*");
+    // Chrome's Private Network Access check: a public HTTPS page (the
+    // Vercel preview) fetching a private address (localhost) has to get
+    // this back on the preflight, or the browser blocks the request
+    // before it ever reaches us — a plain Allow-Origin isn't enough.
+    if (req.headers["access-control-request-private-network"] === "true") {
+      res.setHeader("Access-Control-Allow-Private-Network", "true");
+    }
+  }
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
