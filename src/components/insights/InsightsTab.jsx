@@ -1,5 +1,6 @@
-import React, { useState, useCallback } from "react";
+import React, { useCallback } from "react";
 import { useStatusTimer } from "../../hooks/useStatusTimer.js";
+import { usePersistentState } from "../../hooks/usePersistentState.js";
 import { getBridgeUrl } from "../../utils/config.js";
 import { FinancialAdvice } from "./FinancialAdvice.jsx";
 import { ConversationThemes } from "./ConversationThemes.jsx";
@@ -14,16 +15,18 @@ export default function InsightsTab({
   bridgeStatus,
   t,
 }) {
-  const [insightsData, setInsightsData] = useState(null);
+  const [insightsData, setInsightsData] = usePersistentState("insights.data", null);
   const [insightsStatus, setInsightsStatus] = useStatusTimer();
-  const [insightsStart, setInsightsStart] = useState(() => {
+  const [insightsStart, setInsightsStart] = usePersistentState("insights.start", () => {
     const d = new Date();
     d.setDate(d.getDate() - 7);
     return d.toISOString().slice(0, 10);
   });
-  const [insightsEnd, setInsightsEnd] = useState(() => new Date().toISOString().slice(0, 10));
+  const [insightsEnd, setInsightsEnd] = usePersistentState("insights.end", () =>
+    new Date().toISOString().slice(0, 10)
+  );
 
-  const [adviceData, setAdviceData] = useState(null);
+  const [adviceData, setAdviceData] = usePersistentState("advice.data", null);
   const [adviceStatus, setAdviceStatus] = useStatusTimer();
 
   const fetchInsights = useCallback(async () => {

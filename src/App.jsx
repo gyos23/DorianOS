@@ -5,6 +5,7 @@ import { LM_RECURRING } from "./data/cashflow.js";
 import { computeAmortization } from "./utils/amortization.js";
 import { dateKey, addDays, projectDates, buildDays } from "./utils/dates.js";
 import { useStatusTimer } from "./hooks/useStatusTimer.js";
+import { usePersistentState } from "./hooks/usePersistentState.js";
 import { getBridgeUrl } from "./utils/config.js";
 import { Navbar } from "./components/layout/Navbar.jsx";
 
@@ -19,17 +20,17 @@ function TabLoading() {
 }
 
 export default function App() {
-  const [themeName, setThemeName] = useState("slate");
+  const [themeName, setThemeName] = usePersistentState("themeName", "slate");
   const t = THEMES[themeName];
 
-  const [section, setSection] = useState("payoff");
-  const [visitedSections, setVisitedSections] = useState(() => new Set(["payoff"]));
+  const [section, setSection] = usePersistentState("section", "payoff");
+  const [visitedSections, setVisitedSections] = useState(() => new Set([section]));
   useEffect(() => {
     setVisitedSections((prev) => (prev.has(section) ? prev : new Set(prev).add(section)));
   }, [section]);
-  const [debts, setDebts] = useState(INITIAL_DEBTS);
-  const [strategy, setStrategy] = useState("avalanche");
-  const [extraPayment, setExtraPayment] = useState(500);
+  const [debts, setDebts] = usePersistentState("debts", INITIAL_DEBTS);
+  const [strategy, setStrategy] = usePersistentState("strategy", "avalanche");
+  const [extraPayment, setExtraPayment] = usePersistentState("extraPayment", 500);
 
   const { schedule, accounts, monthlyBudget: debtMonthly } = useMemo(
     () => computeAmortization(debts, strategy, extraPayment),
@@ -51,9 +52,9 @@ export default function App() {
   }, []);
 
   const [debtSyncStatus, setDebtSyncStatus] = useStatusTimer();
-  const [startBal, setStartBal] = useState(4952);
-  const [cfBudget, setCfBudget] = useState(6500);
-  const [lmData, setLmData] = useState(LM_RECURRING);
+  const [startBal, setStartBal] = usePersistentState("startBal", 4952);
+  const [cfBudget, setCfBudget] = usePersistentState("cfBudget", 6500);
+  const [lmData, setLmData] = usePersistentState("lmData", LM_RECURRING);
   const [lmSyncStatus, setLmSyncStatus] = useStatusTimer();
 
   // Bridge state

@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback } from "react";
 import { INITIAL_OF_TASKS, ofColor } from "../../data/tasks.js";
 import { dateKey } from "../../utils/dates.js";
 import { getBridgeUrl } from "../../utils/config.js";
+import { usePersistentState } from "../../hooks/usePersistentState.js";
 import { StatCard } from "../layout/StatCard.jsx";
 import { TaskListView } from "./TaskListView.jsx";
 import { TaskCalendarView } from "./TaskCalendarView.jsx";
@@ -35,13 +36,13 @@ export default function TasksTab({
   setRefreshStatus,
   t,
 }) {
-  const [ofTasks, setOfTasks] = useState(INITIAL_OF_TASKS);
-  const [ofView, setOfView] = useState("dashboard");
+  const [ofTasks, setOfTasks] = usePersistentState("tasks.ofTasks", INITIAL_OF_TASKS);
+  const [ofView, setOfView] = usePersistentState("tasks.ofView", "dashboard");
   const [ofMonth, setOfMonth] = useState(() => new Date());
-  const [ofFilter, setOfFilter] = useState("All");
+  const [ofFilter, setOfFilter] = usePersistentState("tasks.ofFilter", "All");
   const [ofDragItem, setOfDragItem] = useState(null);
   const [ofDragOver, setOfDragOver] = useState(null);
-  const [pendingChanges, setPendingChanges] = useState([]);
+  const [pendingChanges, setPendingChanges] = usePersistentState("tasks.pendingChanges", []);
   const [ofScriptCopied, setOfScriptCopied] = useState(false);
 
   const ofFiltered = useMemo(() => {
