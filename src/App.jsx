@@ -32,7 +32,7 @@ export default function App() {
   const [strategy, setStrategy] = usePersistentState("strategy", "avalanche");
   const [extraPayment, setExtraPayment] = usePersistentState("extraPayment", 500);
 
-  const { schedule, accounts, monthlyBudget: debtMonthly, breakeven, neverPaidOff } = useMemo(
+  const { schedule, accounts, monthlyBudget: debtMonthly, breakeven, neverPaidOff, stalled } = useMemo(
     () => computeAmortization(debts, strategy, extraPayment),
     [debts, strategy, extraPayment]
   );
@@ -287,6 +287,7 @@ export default function App() {
         setSection={setSection}
         debtMonthly={debtMonthly}
         payoffDate={payoffDate}
+        stalled={stalled}
         todayEOD={todayEOD}
         themeName={themeName}
         setThemeName={setThemeName}
@@ -312,6 +313,7 @@ export default function App() {
               payoffDate={payoffDate}
               breakeven={breakeven}
               neverPaidOff={neverPaidOff}
+              stalled={stalled}
               syncDebts={syncDebts}
               debtSyncStatus={debtSyncStatus}
               t={t}

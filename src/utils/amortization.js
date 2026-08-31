@@ -70,7 +70,14 @@ export function computeAmortization(debts, strategy, extraPayment) {
     schedule.push(pt);
   }
 
-  const neverPaidOff = accounts.some(a => a.remaining > 0.005);
+  const startingTotal = accounts.reduce((s, a) => s + a.balance, 0);
+  const finalTotal = accounts.reduce((s, a) => s + a.remaining, 0);
+  const neverPaidOff = finalTotal > 0.005;
+  // With the floor above, no account can ever grow — but if every account's
+  // floor payment is exactly its own interest (no minPayment exceeds it),
+  // principal never moves and the balance sits flat forever. That's a real
+  // stalemate, distinct from a plan that's just slow and needs >30 years.
+  const stalled = neverPaidOff && finalTotal >= startingTotal - 0.5;
 
-  return { schedule, accounts, monthlyBudget, breakeven, neverPaidOff };
+  return { schedule, accounts, monthlyBudget, breakeven, neverPaidOff, stalled };
 }

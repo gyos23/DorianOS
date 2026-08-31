@@ -21,6 +21,7 @@ export default function DebtPayoffTab({
   payoffDate,
   breakeven,
   neverPaidOff,
+  stalled,
   syncDebts,
   debtSyncStatus,
   t,
@@ -50,17 +51,31 @@ export default function DebtPayoffTab({
         <StatCard
           label="Payoff Date"
           value={
-            neverPaidOff
+            stalled
               ? "Never"
+              : neverPaidOff
+              ? "30+ years"
               : payoffDate.toLocaleDateString("en-US", { month: "short", year: "numeric" })
           }
-          sub={neverPaidOff ? "min payments don't cover interest" : `${payoffMonths} months`}
+          sub={
+            stalled
+              ? "min payments only cover interest"
+              : neverPaidOff
+              ? "add extra to speed this up"
+              : `${payoffMonths} months`
+          }
           color={neverPaidOff ? t.danger : t.accent}
         />
         <StatCard
           label="Total Interest"
           value={neverPaidOff ? `${fmt(totalInterestPaid)}+` : fmt(totalInterestPaid)}
-          sub={neverPaidOff ? "debt is growing, not shrinking" : "cost of carrying debt"}
+          sub={
+            stalled
+              ? "balance isn't moving"
+              : neverPaidOff
+              ? "over 30+ years and counting"
+              : "cost of carrying debt"
+          }
           color={t.warning}
         />
         <StatCard
