@@ -223,6 +223,19 @@ Endpoints:
 ${process.env.ANTHROPIC_API_KEY ? "ANTHROPIC_API_KEY is set." : "⚠ ANTHROPIC_API_KEY is NOT set — /start will fail until you run ./setup-mac-autostart.sh"}
 Ready. Waiting for requests...
 `);
+
+  // The supervisor itself autostarts at login (via the LaunchAgent), so also
+  // autostart of-bridge.js right away whenever we have a key for it — that's
+  // what makes "log in and it's all just running" true end to end, instead
+  // of still needing a manual Start Bridge click every time you reboot.
+  if (process.env.ANTHROPIC_API_KEY) {
+    const result = startBridge();
+    console.log(
+      result.started
+        ? "[supervisor] auto-started of-bridge.js"
+        : `[supervisor] skipped auto-start: ${result.reason}`
+    );
+  }
 });
 
 function shutdown() {
