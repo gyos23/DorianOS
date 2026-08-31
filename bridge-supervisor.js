@@ -22,6 +22,7 @@ const path = require("path");
 const fs = require("fs");
 const os = require("os");
 const { spawn, exec } = require("child_process");
+const { isAllowedOrigin } = require("./bridge-cors.js");
 
 const PORT = 3130;
 const BRIDGE_SCRIPT = path.join(__dirname, "of-bridge.js");
@@ -33,12 +34,6 @@ const PLIST_PATH = path.join(
   "LaunchAgents",
   `${PLIST_LABEL}.plist`
 );
-
-const ALLOWED_ORIGINS = [
-  "http://localhost:5173",
-  "http://localhost:4173",
-  "https://dorian-os.vercel.app",
-];
 
 // Load ANTHROPIC_API_KEY from the local secrets file if it isn't already
 // set in the environment. Simple KEY=value parsing — no dependency needed.
@@ -117,8 +112,17 @@ function runLaunchctl(args) {
 
 const server = http.createServer((req, res) => {
   const origin = req.headers.origin || "";
-  const allowed = ALLOWED_ORIGINS.some(o => origin.startsWith(o)) || origin === "";
-  if (allowed) res.setHeader("Access-Control-Allow-Origin", origin || "*");
+  const allowed = isAllowedOrigin(origin);
+  if (allowed) {
+    res.setHeader("Access-Control-Allow-Origin", origin || "*");
+    // Chrome's Private Network Access check: a public HTTPS page (the
+    // Vercel preview) fetching a private address (localhost) has to get
+    // this back on the preflight, or the browser blocks the request
+    // before it ever reaches us — a plain Allow-Origin isn't enough.
+    if (req.headers["access-control-request-private-network"] === "true") {
+      res.setHeader("Access-Control-Allow-Private-Network", "true");
+    }
+  }
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
@@ -223,6 +227,19 @@ Endpoints:
 ${process.env.ANTHROPIC_API_KEY ? "ANTHROPIC_API_KEY is set." : "⚠ ANTHROPIC_API_KEY is NOT set — /start will fail until you run ./setup-mac-autostart.sh"}
 Ready. Waiting for requests...
 `);
+
+  // The supervisor itself autostarts at login (via the LaunchAgent), so also
+  // autostart of-bridge.js right away whenever we have a key for it — that's
+  // what makes "log in and it's all just running" true end to end, instead
+  // of still needing a manual Start Bridge click every time you reboot.
+  if (process.env.ANTHROPIC_API_KEY) {
+    const result = startBridge();
+    console.log(
+      result.started
+        ? "[supervisor] auto-started of-bridge.js"
+        : `[supervisor] skipped auto-start: ${result.reason}`
+    );
+  }
 });
 
 function shutdown() {

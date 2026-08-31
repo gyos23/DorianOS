@@ -56,7 +56,7 @@ A browser page can't spawn or kill a local process on its own, so the Tasks tab'
 ./setup-mac-autostart.sh
 ```
 
-This prompts for your Anthropic API key (input is hidden, never saved to shell history), stores it in `~/.dorianos-bridge.env` (permissions locked to your user only, never committed to git), and installs a LaunchAgent so `bridge-supervisor.js` starts itself every time you log in. After running it once, you never touch a terminal again — the Tasks tab's **Start/Stop Bridge** button and the **🟢 Auto-start ON** pill next to it are all you need. Safe to re-run any time, e.g. to rotate your key.
+This prompts for your Anthropic API key (input is hidden, never saved to shell history), stores it in `~/.dorianos-bridge.env` (permissions locked to your user only, never committed to git), and installs a LaunchAgent so `bridge-supervisor.js` starts itself every time you log in. On boot, the supervisor also auto-starts `of-bridge.js` right away, as long as it has a key — so after running this script once, the whole chain (login → supervisor → bridge) comes up on its own after every restart, with nothing to click. After running it once, you never touch a terminal again — the Tasks tab's and Insights tab's **Stop Bridge** button and the **🟢 Auto-start ON** pill are there if you ever want to pause it, but you shouldn't need them day to day. Safe to re-run any time, e.g. to rotate your key.
 
 Only macOS is supported (it installs a LaunchAgent). Re-running with a new key just overwrites the old setup.
 
@@ -66,7 +66,7 @@ Only macOS is supported (it installs a LaunchAgent). Re-running with a new key j
 ANTHROPIC_API_KEY=your_key node bridge-supervisor.js
 ```
 
-It listens at `http://localhost:3130` and only starts/stops `of-bridge.js` for you — it doesn't touch OmniFocus itself. You'll need to leave this running in a terminal (or re-run it after every restart) since it isn't registered to start automatically.
+It listens at `http://localhost:3130`, auto-starts `of-bridge.js` as soon as it comes up (if `ANTHROPIC_API_KEY` is set), and starts/stops it on request after that — it doesn't touch OmniFocus itself. You'll need to leave this running in a terminal (or re-run it after every restart) since without the LaunchAgent it isn't registered to start automatically.
 
 **Turning autostart back off:** click the **🟢 Auto-start ON** pill in the Tasks tab, or run `launchctl unload -w ~/Library/LaunchAgents/com.dorianos.bridge-supervisor.plist`. Either stops the supervisor immediately and it won't relaunch at your next login — re-run `./setup-mac-autostart.sh` whenever you want it back.
 

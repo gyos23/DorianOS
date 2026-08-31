@@ -5,6 +5,7 @@ import { getBridgeUrl, getSupervisorUrl } from "../../utils/config.js";
 import { usePersistentState } from "../../hooks/usePersistentState.js";
 import { useStatusTimer } from "../../hooks/useStatusTimer.js";
 import { StatCard } from "../layout/StatCard.jsx";
+import { BridgeToggleButton } from "../shared/BridgeToggleButton.jsx";
 import { TaskListView } from "./TaskListView.jsx";
 import { TaskCalendarView } from "./TaskCalendarView.jsx";
 import { PendingSyncSidebar } from "./PendingSyncSidebar.jsx";
@@ -103,32 +104,6 @@ export default function TasksTab({
     },
     [ofDragItem]
   );
-
-  const [bridgeToggleStatus, setBridgeToggleStatus] = useStatusTimer();
-  const [bridgeToggleError, setBridgeToggleError] = useState(null);
-
-  const toggleBridge = useCallback(async () => {
-    setBridgeToggleError(null);
-    setBridgeToggleStatus("loading");
-    const action = bridgeStatus === "online" ? "stop" : "start";
-    try {
-      const supervisorUrl = getSupervisorUrl();
-      const r = await fetch(`${supervisorUrl}/${action}`, {
-        method: "POST",
-        signal: AbortSignal.timeout(10000),
-      });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error || `Supervisor ${action} failed`);
-      setBridgeToggleStatus("done");
-      setTimeout(checkBridge, action === "start" ? 1500 : 300);
-    } catch (err) {
-      console.error("Bridge toggle failed:", err.message);
-      setBridgeToggleError(
-        "Supervisor unreachable — run: node bridge-supervisor.js (see README)"
-      );
-      setBridgeToggleStatus("error");
-    }
-  }, [bridgeStatus, checkBridge, setBridgeToggleStatus]);
 
   // null = not checked yet, true/false = whether the LaunchAgent is installed
   const [autostartInstalled, setAutostartInstalled] = useState(null);
@@ -399,27 +374,7 @@ export default function TasksTab({
             </span>
           </div>
 
-          <button
-            className="btn"
-            onClick={toggleBridge}
-            disabled={bridgeToggleStatus === "loading"}
-            title={bridgeToggleError || ""}
-            style={{
-              borderColor: bridgeToggleStatus === "error" ? t.danger : "",
-              color: bridgeToggleStatus === "error" ? t.danger : "",
-              opacity: bridgeToggleStatus === "loading" ? 0.6 : 1,
-            }}
-          >
-            {bridgeToggleStatus === "loading"
-              ? bridgeStatus === "online"
-                ? "Stopping…"
-                : "Starting…"
-              : bridgeToggleStatus === "error"
-              ? "✕ Toggle failed"
-              : bridgeStatus === "online"
-              ? "■ Stop Bridge"
-              : "▶ Start Bridge"}
-          </button>
+          <BridgeToggleButton bridgeStatus={bridgeStatus} checkBridge={checkBridge} t={t} />
 
           {autostartInstalled === true && (
             <button

@@ -13,6 +13,7 @@ export default function InsightsTab({
   forecasts,
   cashZeroDate,
   bridgeStatus,
+  checkBridge,
   t,
 }) {
   const [insightsData, setInsightsData] = usePersistentState("insights.data", null);
@@ -75,6 +76,7 @@ export default function InsightsTab({
         adviceData={adviceData}
         adviceStatus={adviceStatus}
         bridgeStatus={bridgeStatus}
+        checkBridge={checkBridge}
         fetchAdvice={fetchAdvice}
         t={t}
       />

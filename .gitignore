@@ -6,3 +6,5 @@ dist
 .env.*.local
 .claude/
 *.log
+.agents/
+skills-lock.json

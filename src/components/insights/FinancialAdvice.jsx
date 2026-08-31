@@ -1,6 +1,14 @@
 import React from "react";
+import { BridgeToggleButton } from "../shared/BridgeToggleButton.jsx";
 
-export function FinancialAdvice({ adviceData, adviceStatus, bridgeStatus, fetchAdvice, t }) {
+export function FinancialAdvice({
+  adviceData,
+  adviceStatus,
+  bridgeStatus,
+  checkBridge,
+  fetchAdvice,
+  t,
+}) {
   return (
     <div style={{ marginBottom: 32 }}>
       <div
@@ -47,6 +55,10 @@ export function FinancialAdvice({ adviceData, adviceStatus, bridgeStatus, fetchA
       {bridgeStatus !== "online" && !adviceData && (
         <div
           style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
             fontSize: 12,
             color: t.textDim,
             padding: "12px 16px",
@@ -55,7 +67,8 @@ export function FinancialAdvice({ adviceData, adviceStatus, bridgeStatus, fetchA
             border: `1px solid ${t.border2}`,
           }}
         >
-          Bridge offline — start with <code>ANTHROPIC_API_KEY=xxx node of-bridge.js</code>
+          <span>Bridge offline</span>
+          <BridgeToggleButton bridgeStatus={bridgeStatus} checkBridge={checkBridge} t={t} />
         </div>
       )}
 
