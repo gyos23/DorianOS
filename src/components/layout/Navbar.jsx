@@ -66,7 +66,9 @@ export function Navbar({
           { label: "Debt/mo", value: fmt(debtMonthly), color: t.danger },
           {
             label: "Debt-free",
-            value: payoffDate.toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+            value: payoffDate
+              ? payoffDate.toLocaleDateString("en-US", { month: "short", year: "numeric" })
+              : "Never",
             color: t.accent,
           },
           { label: "Cash today", value: fmt(todayEOD), color: t.accentSub },

@@ -19,6 +19,8 @@ export default function DebtPayoffTab({
   totalInterestPaid,
   payoffMonths,
   payoffDate,
+  breakeven,
+  neverPaidOff,
   syncDebts,
   debtSyncStatus,
   t,
@@ -47,20 +49,24 @@ export default function DebtPayoffTab({
         />
         <StatCard
           label="Payoff Date"
-          value={payoffDate.toLocaleDateString("en-US", { month: "short", year: "numeric" })}
-          sub={`${payoffMonths} months`}
-          color={t.accent}
+          value={
+            neverPaidOff
+              ? "Never"
+              : payoffDate.toLocaleDateString("en-US", { month: "short", year: "numeric" })
+          }
+          sub={neverPaidOff ? "min payments don't cover interest" : `${payoffMonths} months`}
+          color={neverPaidOff ? t.danger : t.accent}
         />
         <StatCard
           label="Total Interest"
-          value={fmt(totalInterestPaid)}
-          sub="cost of carrying debt"
+          value={neverPaidOff ? `${fmt(totalInterestPaid)}+` : fmt(totalInterestPaid)}
+          sub={neverPaidOff ? "debt is growing, not shrinking" : "cost of carrying debt"}
           color={t.warning}
         />
         <StatCard
           label="Monthly Payment"
           value={fmt(debtMonthly)}
-          sub={`+${fmt(extraPayment)} extra`}
+          sub={`${fmt(breakeven)} min + ${fmt(extraPayment)} extra`}
           color={t.accentSub}
         />
       </div>
@@ -125,7 +131,10 @@ export default function DebtPayoffTab({
                 fontWeight: 500,
               }}
             >
-              Extra Monthly
+              Extra Monthly{" "}
+              <span style={{ textTransform: "none", letterSpacing: "normal" }}>
+                (on top of {fmt(breakeven)} min to hold steady)
+              </span>
             </span>
             <span
               style={{

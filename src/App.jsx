@@ -32,7 +32,7 @@ export default function App() {
   const [strategy, setStrategy] = usePersistentState("strategy", "avalanche");
   const [extraPayment, setExtraPayment] = usePersistentState("extraPayment", 500);
 
-  const { schedule, accounts, monthlyBudget: debtMonthly } = useMemo(
+  const { schedule, accounts, monthlyBudget: debtMonthly, breakeven, neverPaidOff } = useMemo(
     () => computeAmortization(debts, strategy, extraPayment),
     [debts, strategy, extraPayment]
   );
@@ -40,10 +40,11 @@ export default function App() {
   const totalInterestPaid = accounts.reduce((s, a) => s + a.totalInterest, 0);
   const payoffMonths = schedule.length;
   const payoffDate = useMemo(() => {
+    if (neverPaidOff) return null;
     const d = new Date();
     d.setMonth(d.getMonth() + payoffMonths);
     return d;
-  }, [payoffMonths]);
+  }, [payoffMonths, neverPaidOff]);
 
   const updateDebt = useCallback((id, field, val) => {
     setDebts((prev) =>
@@ -309,6 +310,8 @@ export default function App() {
               totalInterestPaid={totalInterestPaid}
               payoffMonths={payoffMonths}
               payoffDate={payoffDate}
+              breakeven={breakeven}
+              neverPaidOff={neverPaidOff}
               syncDebts={syncDebts}
               debtSyncStatus={debtSyncStatus}
               t={t}
