@@ -100,9 +100,9 @@ function stopBridge() {
 }
 
 // Autostart is "enabled" iff the LaunchAgent plist exists — installed by
-// setup-mac-autostart.sh. Disabling it here (launchctl unload -w) also
-// stops this very process, since a login helper has no life outside its
-// job; that's expected, the HTTP response is sent first.
+// setup-mac-autostart.sh. Disabling removes the plist (not just unloads
+// it) so this stays accurate even if the bridge is later started
+// manually — "installed" always means "will run at next login."
 function autostartStatus() {
   return { installed: fs.existsSync(PLIST_PATH) };
 }
@@ -166,13 +166,24 @@ const server = http.createServer((req, res) => {
       res.end(JSON.stringify({ disabled: false, reason: "not installed" }));
       return;
     }
-    runLaunchctl(`unload -w "${PLIST_PATH}"`).then(result => {
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ disabled: result.ok, ...result }));
-      // This process is the LaunchAgent job being unloaded — it will be
-      // killed by launchd right after. Exit cleanly rather than linger.
-      setTimeout(() => process.exit(0), 200);
-    });
+    // Tearing down this job kills this very process (a login helper has no
+    // life outside its job), so: reply first (a delayed unload can still
+    // race launchd's teardown against our own callback), delete the plist
+    // file so status is correct immediately, then remove the job by label
+    // (not by path — unlike `unload`, `remove` doesn't need the file to
+    // still exist, so the delete-then-stop order is safe here).
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ disabled: true }));
+    setTimeout(() => {
+      try {
+        fs.unlinkSync(PLIST_PATH);
+      } catch {
+        // already gone — fine
+      }
+      exec(`launchctl remove ${PLIST_LABEL}`, () => {
+        process.exit(0);
+      });
+    }, 150);
     return;
   }
 

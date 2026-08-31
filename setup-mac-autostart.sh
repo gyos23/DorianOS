@@ -29,6 +29,23 @@ if [ -z "$NODE_PATH" ]; then
   exit 1
 fi
 
+# Escape values before dropping them into XML — a path containing &, <, >,
+# or a quote (e.g. ~/Projects/R&D/DorianOS) would otherwise produce a
+# malformed plist that launchctl refuses to load.
+xml_escape() {
+  local s="$1"
+  # Bash 5.2+ treats a bare & in the replacement as a backreference to the
+  # match (like sed) — must escape it as \& to get a literal ampersand.
+  s="${s//&/\&amp;}"
+  s="${s//</\&lt;}"
+  s="${s//>/\&gt;}"
+  s="${s//\"/\&quot;}"
+  s="${s//\'/\&apos;}"
+  printf '%s' "$s"
+}
+NODE_PATH_XML="$(xml_escape "$NODE_PATH")"
+SCRIPT_DIR_XML="$(xml_escape "$SCRIPT_DIR")"
+
 if [ "${1:-}" != "" ]; then
   API_KEY="$1"
 else
@@ -62,14 +79,14 @@ cat > "$PLIST_PATH" <<PLIST
   <key>Label</key><string>${PLIST_LABEL}</string>
   <key>ProgramArguments</key>
   <array>
-    <string>${NODE_PATH}</string>
-    <string>${SCRIPT_DIR}/bridge-supervisor.js</string>
+    <string>${NODE_PATH_XML}</string>
+    <string>${SCRIPT_DIR_XML}/bridge-supervisor.js</string>
   </array>
-  <key>WorkingDirectory</key><string>${SCRIPT_DIR}</string>
+  <key>WorkingDirectory</key><string>${SCRIPT_DIR_XML}</string>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
-  <key>StandardOutPath</key><string>${SCRIPT_DIR}/.bridge-supervisor.log</string>
-  <key>StandardErrorPath</key><string>${SCRIPT_DIR}/.bridge-supervisor.log</string>
+  <key>StandardOutPath</key><string>${SCRIPT_DIR_XML}/.bridge-supervisor.log</string>
+  <key>StandardErrorPath</key><string>${SCRIPT_DIR_XML}/.bridge-supervisor.log</string>
 </dict>
 </plist>
 PLIST
