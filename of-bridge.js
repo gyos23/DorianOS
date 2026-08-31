@@ -10,18 +10,13 @@
 
 const http = require("http");
 const { exec } = require("child_process");
+const { isAllowedOrigin } = require("./bridge-cors.js");
 
 const PORT = 3131;
 // Claude sometimes wraps JSON replies in a ```json fence despite instructions not to.
 function stripJsonFence(text) {
   return text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
 }
-// Only accept requests from your Vercel app (and localhost for testing)
-const ALLOWED_ORIGINS = [
-  "http://localhost:5173",
-  "http://localhost:4173",
-  "https://dorian-os.vercel.app",
-];
 
 // ─── AppleScript builder ──────────────────────────────────────────────────────
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -81,8 +76,8 @@ function runAppleScript(script, timeout = 15000) {
 const server = http.createServer(async (req, res) => {
   const origin = req.headers.origin || "";
 
-  // CORS — allow your Vercel app + localhost
-  const allowed = ALLOWED_ORIGINS.some(o => origin.startsWith(o)) || origin === "";
+  // CORS — allow your Vercel app (production + previews) + localhost
+  const allowed = isAllowedOrigin(origin);
   if (allowed) {
     res.setHeader("Access-Control-Allow-Origin", origin || "*");
   }

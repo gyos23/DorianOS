@@ -22,6 +22,7 @@ const path = require("path");
 const fs = require("fs");
 const os = require("os");
 const { spawn, exec } = require("child_process");
+const { isAllowedOrigin } = require("./bridge-cors.js");
 
 const PORT = 3130;
 const BRIDGE_SCRIPT = path.join(__dirname, "of-bridge.js");
@@ -33,12 +34,6 @@ const PLIST_PATH = path.join(
   "LaunchAgents",
   `${PLIST_LABEL}.plist`
 );
-
-const ALLOWED_ORIGINS = [
-  "http://localhost:5173",
-  "http://localhost:4173",
-  "https://dorian-os.vercel.app",
-];
 
 // Load ANTHROPIC_API_KEY from the local secrets file if it isn't already
 // set in the environment. Simple KEY=value parsing — no dependency needed.
@@ -117,7 +112,7 @@ function runLaunchctl(args) {
 
 const server = http.createServer((req, res) => {
   const origin = req.headers.origin || "";
-  const allowed = ALLOWED_ORIGINS.some(o => origin.startsWith(o)) || origin === "";
+  const allowed = isAllowedOrigin(origin);
   if (allowed) res.setHeader("Access-Control-Allow-Origin", origin || "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
