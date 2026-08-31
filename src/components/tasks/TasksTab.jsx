@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { INITIAL_OF_TASKS, ofColor } from "../../data/tasks.js";
 import { dateKey } from "../../utils/dates.js";
 import { getBridgeUrl, getSupervisorUrl } from "../../utils/config.js";
@@ -129,6 +129,42 @@ export default function TasksTab({
       setBridgeToggleStatus("error");
     }
   }, [bridgeStatus, checkBridge, setBridgeToggleStatus]);
+
+  // null = not checked yet, true/false = whether the LaunchAgent is installed
+  const [autostartInstalled, setAutostartInstalled] = useState(null);
+  const [autostartToggleStatus, setAutostartToggleStatus] = useStatusTimer();
+
+  const checkAutostart = useCallback(async () => {
+    try {
+      const r = await fetch(`${getSupervisorUrl()}/status`, { signal: AbortSignal.timeout(3000) });
+      const data = await r.json();
+      setAutostartInstalled(!!data.autostart?.installed);
+    } catch {
+      setAutostartInstalled(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkAutostart();
+  }, [checkAutostart]);
+
+  const toggleAutostart = useCallback(async () => {
+    if (!autostartInstalled) return;
+    setAutostartToggleStatus("loading");
+    try {
+      const r = await fetch(`${getSupervisorUrl()}/autostart/disable`, {
+        method: "POST",
+        signal: AbortSignal.timeout(5000),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "Autostart toggle failed");
+      setAutostartToggleStatus("done");
+      setAutostartInstalled(false);
+    } catch (err) {
+      console.error("Autostart toggle failed:", err.message);
+      setAutostartToggleStatus("error");
+    }
+  }, [autostartInstalled, setAutostartToggleStatus]);
 
   const fetchOFTasks = useCallback(async () => {
     setRefreshStatus("loading");
@@ -384,6 +420,35 @@ export default function TasksTab({
               ? "■ Stop Bridge"
               : "▶ Start Bridge"}
           </button>
+
+          {autostartInstalled === true && (
+            <button
+              className="btn"
+              onClick={toggleAutostart}
+              disabled={autostartToggleStatus === "loading"}
+              title="Bridge starts automatically at login. Click to turn that off."
+              style={{
+                fontSize: 10,
+                color: t.accent,
+                borderColor: t.accent,
+                opacity: autostartToggleStatus === "loading" ? 0.6 : 1,
+              }}
+            >
+              {autostartToggleStatus === "loading" ? "Disabling…" : "🟢 Auto-start ON"}
+            </button>
+          )}
+          {autostartInstalled === false && (
+            <span
+              style={{
+                fontSize: 10,
+                color: t.textDim,
+                padding: "4px 10px",
+              }}
+              title="Run ./setup-mac-autostart.sh once from a terminal to re-enable."
+            >
+              ⚪ Auto-start off
+            </span>
+          )}
 
           {OMNIFOCUS_QUICK_LINKS.map(([label, href]) => (
             <a

@@ -46,46 +46,29 @@ ANTHROPIC_API_KEY=your_key node of-bridge.js
 
 The bridge listens at `http://localhost:3131`. The app detects it automatically when you open the Tasks or Insights tabs. Without it, OmniFocus sync and Insights are unavailable; Debt Payoff and Cash Flow still work fully.
 
-### 3. Bridge supervisor (optional — toggle the bridge from the dashboard)
+### 3. Bridge supervisor (toggle the bridge from the dashboard)
 
-A browser page can't spawn or kill a local process on its own, so the Tasks tab's **Start/Stop Bridge** button talks to a second, much lighter process — `bridge-supervisor.js` — that does that on its behalf. Run it once, with the same API key:
+A browser page can't spawn or kill a local process on its own, so the Tasks tab's **Start/Stop Bridge** button talks to a second, much lighter process — `bridge-supervisor.js` — that does that on its behalf.
+
+**Recommended: one-time setup, fully automatic after that.**
+
+```bash
+./setup-mac-autostart.sh
+```
+
+This prompts for your Anthropic API key (input is hidden, never saved to shell history), stores it in `~/.dorianos-bridge.env` (permissions locked to your user only, never committed to git), and installs a LaunchAgent so `bridge-supervisor.js` starts itself every time you log in. After running it once, you never touch a terminal again — the Tasks tab's **Start/Stop Bridge** button and the **🟢 Auto-start ON** pill next to it are all you need. Safe to re-run any time, e.g. to rotate your key.
+
+Only macOS is supported (it installs a LaunchAgent). Re-running with a new key just overwrites the old setup.
+
+**Manual alternative**, if you'd rather not install a LaunchAgent:
 
 ```bash
 ANTHROPIC_API_KEY=your_key node bridge-supervisor.js
 ```
 
-It listens at `http://localhost:3130` and only starts/stops `of-bridge.js` for you — it doesn't touch OmniFocus itself. Leave it running in the background (or set it up to start at login below); it uses negligible resources when the bridge itself is stopped.
+It listens at `http://localhost:3130` and only starts/stops `of-bridge.js` for you — it doesn't touch OmniFocus itself. You'll need to leave this running in a terminal (or re-run it after every restart) since it isn't registered to start automatically.
 
-**Optional: auto-start at login.** Create `~/Library/LaunchAgents/com.dorianos.bridge-supervisor.plist`:
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key><string>com.dorianos.bridge-supervisor</string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>/usr/local/bin/node</string>
-    <string>/absolute/path/to/DorianOS/bridge-supervisor.js</string>
-  </array>
-  <key>EnvironmentVariables</key>
-  <dict>
-    <key>ANTHROPIC_API_KEY</key><string>your_key</string>
-  </dict>
-  <key>RunAtLoad</key><true/>
-  <key>KeepAlive</key><true/>
-</dict>
-</plist>
-```
-
-Adjust the `node` path (`which node`) and the script path, then load it:
-
-```bash
-launchctl load ~/Library/LaunchAgents/com.dorianos.bridge-supervisor.plist
-```
-
-This plist stores your API key in plain text, readable only by your user account — fine for a personal machine, but keep the file's permissions private (`chmod 600`) and don't commit it.
+**Turning autostart back off:** click the **🟢 Auto-start ON** pill in the Tasks tab, or run `launchctl unload -w ~/Library/LaunchAgents/com.dorianos.bridge-supervisor.plist`. Either stops the supervisor immediately and it won't relaunch at your next login — re-run `./setup-mac-autostart.sh` whenever you want it back.
 
 ## Dev
 

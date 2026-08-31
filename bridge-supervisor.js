@@ -4,26 +4,60 @@
  * A tiny always-on helper that starts/stops of-bridge.js on request, so the
  * dashboard can toggle the bridge with a button instead of a terminal.
  *
- * Start once (ideally at login via a LaunchAgent — see README):
+ * Easiest setup: run ./setup-mac-autostart.sh once — it stores your API key
+ * in a locked-down local file and installs a LaunchAgent so this script
+ * starts itself at login. No terminal needed after that.
+ *
+ * Manual start (reads the key from the same local file, or from the env):
+ *   node bridge-supervisor.js
  *   ANTHROPIC_API_KEY=your_key node bridge-supervisor.js
  *
  * It does not run OmniFocus commands itself — it only spawns/kills the real
- * of-bridge.js process, which it launches with this process's own env, so
- * ANTHROPIC_API_KEY only needs to be set once, here.
+ * of-bridge.js process, passing through its own env (including
+ * ANTHROPIC_API_KEY) so the key only needs to live in one place.
  */
 
 const http = require("http");
 const path = require("path");
-const { spawn } = require("child_process");
+const fs = require("fs");
+const os = require("os");
+const { spawn, exec } = require("child_process");
 
 const PORT = 3130;
 const BRIDGE_SCRIPT = path.join(__dirname, "of-bridge.js");
+const SECRETS_FILE = path.join(os.homedir(), ".dorianos-bridge.env");
+const PLIST_LABEL = "com.dorianos.bridge-supervisor";
+const PLIST_PATH = path.join(
+  os.homedir(),
+  "Library",
+  "LaunchAgents",
+  `${PLIST_LABEL}.plist`
+);
 
 const ALLOWED_ORIGINS = [
   "http://localhost:5173",
   "http://localhost:4173",
   "https://dorian-os.vercel.app",
 ];
+
+// Load ANTHROPIC_API_KEY from the local secrets file if it isn't already
+// set in the environment. Simple KEY=value parsing — no dependency needed.
+function loadSecretsFile() {
+  if (process.env.ANTHROPIC_API_KEY) return;
+  try {
+    const contents = fs.readFileSync(SECRETS_FILE, "utf8");
+    for (const line of contents.split("\n")) {
+      const match = line.match(/^ANTHROPIC_API_KEY=(.*)$/);
+      if (match) {
+        process.env.ANTHROPIC_API_KEY = match[1].trim();
+        break;
+      }
+    }
+  } catch {
+    // no secrets file yet — fine, /start will report the missing key
+  }
+}
+loadSecretsFile();
 
 let child = null;
 
@@ -65,6 +99,22 @@ function stopBridge() {
   });
 }
 
+// Autostart is "enabled" iff the LaunchAgent plist exists — installed by
+// setup-mac-autostart.sh. Disabling it here (launchctl unload -w) also
+// stops this very process, since a login helper has no life outside its
+// job; that's expected, the HTTP response is sent first.
+function autostartStatus() {
+  return { installed: fs.existsSync(PLIST_PATH) };
+}
+
+function runLaunchctl(args) {
+  return new Promise(resolve => {
+    exec(`launchctl ${args}`, (error, stdout, stderr) => {
+      resolve({ ok: !error, stdout: stdout.trim(), stderr: stderr.trim() });
+    });
+  });
+}
+
 const server = http.createServer((req, res) => {
   const origin = req.headers.origin || "";
   const allowed = ALLOWED_ORIGINS.some(o => origin.startsWith(o)) || origin === "";
@@ -80,7 +130,11 @@ const server = http.createServer((req, res) => {
 
   if (req.method === "GET" && req.url === "/status") {
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ running: isRunning(), pid: isRunning() ? child.pid : null }));
+    res.end(JSON.stringify({
+      running: isRunning(),
+      pid: isRunning() ? child.pid : null,
+      autostart: autostartStatus(),
+    }));
     return;
   }
 
@@ -88,7 +142,7 @@ const server = http.createServer((req, res) => {
     if (!process.env.ANTHROPIC_API_KEY) {
       res.writeHead(400, { "Content-Type": "application/json" });
       res.end(JSON.stringify({
-        error: "ANTHROPIC_API_KEY is not set on the supervisor process. Restart it with ANTHROPIC_API_KEY=your_key node bridge-supervisor.js",
+        error: "ANTHROPIC_API_KEY isn't set. Run ./setup-mac-autostart.sh once, or restart with ANTHROPIC_API_KEY=your_key node bridge-supervisor.js",
       }));
       return;
     }
@@ -106,6 +160,37 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (req.method === "POST" && req.url === "/autostart/disable") {
+    if (!fs.existsSync(PLIST_PATH)) {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ disabled: false, reason: "not installed" }));
+      return;
+    }
+    runLaunchctl(`unload -w "${PLIST_PATH}"`).then(result => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ disabled: result.ok, ...result }));
+      // This process is the LaunchAgent job being unloaded — it will be
+      // killed by launchd right after. Exit cleanly rather than linger.
+      setTimeout(() => process.exit(0), 200);
+    });
+    return;
+  }
+
+  if (req.method === "POST" && req.url === "/autostart/enable") {
+    if (!fs.existsSync(PLIST_PATH)) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        error: "No LaunchAgent installed yet — run ./setup-mac-autostart.sh once from a terminal first.",
+      }));
+      return;
+    }
+    runLaunchctl(`load -w "${PLIST_PATH}"`).then(result => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ enabled: result.ok, ...result }));
+    });
+    return;
+  }
+
   res.writeHead(404);
   res.end("Not found");
 });
@@ -118,11 +203,13 @@ server.listen(PORT, "127.0.0.1", () => {
 ╚═══════════════════════════════════════════╝
 
 Endpoints:
-  GET  /status  — is of-bridge.js running?
-  POST /start   — spawn of-bridge.js
-  POST /stop    — kill of-bridge.js
+  GET  /status            — is of-bridge.js running? is autostart installed?
+  POST /start              — spawn of-bridge.js
+  POST /stop                — kill of-bridge.js
+  POST /autostart/enable    — load the LaunchAgent (start at login)
+  POST /autostart/disable   — unload the LaunchAgent (stops this process too)
 
-${process.env.ANTHROPIC_API_KEY ? "ANTHROPIC_API_KEY is set." : "⚠ ANTHROPIC_API_KEY is NOT set — /start will fail until you restart with it."}
+${process.env.ANTHROPIC_API_KEY ? "ANTHROPIC_API_KEY is set." : "⚠ ANTHROPIC_API_KEY is NOT set — /start will fail until you run ./setup-mac-autostart.sh"}
 Ready. Waiting for requests...
 `);
 });
