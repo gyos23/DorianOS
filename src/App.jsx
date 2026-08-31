@@ -362,6 +362,7 @@ export default function App() {
               forecasts={forecasts}
               cashZeroDate={cashZeroDate}
               bridgeStatus={bridgeStatus}
+              checkBridge={checkBridge}
               t={t}
             />
           </div>
