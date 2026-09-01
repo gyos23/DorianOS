@@ -108,13 +108,13 @@ const server = http.createServer(async (req, res) => {
     console.log(`[${new Date().toLocaleTimeString()}] Fetching active tasks from OmniFocus...`);
     const fetchScript = `
 tell application "OmniFocus"
-  tell document 1
+  tell default document
     set output to ""
 
     -- 1. Inbox tasks
     set inbTasks to every inbox task
     repeat with t in inbTasks
-      if completed of t is false and dropped of t is false then
+      if effectively completed of t is false and effectively dropped of t is false then
         set tDue to ""
         if due date of t is not missing value then
           set tDue to (due date of t) as string
@@ -129,7 +129,7 @@ tell application "OmniFocus"
       set pName to name of p
       set pTasks to every flattened task of p
       repeat with t in pTasks
-        if completed of t is false and dropped of t is false and (number of tasks of t is 0) then
+        if effectively completed of t is false and effectively dropped of t is false and (number of tasks of t is 0) then
           set tDue to ""
           if due date of t is not missing value then
             set tDue to (due date of t) as string
