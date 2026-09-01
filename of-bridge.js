@@ -105,48 +105,64 @@ const server = http.createServer(async (req, res) => {
 
   // ── Live task fetch endpoint ──────────────────────────────────────────────
   if (req.method === "GET" && req.url === "/tasks") {
-    console.log(`[${new Date().toLocaleTimeString()}] Fetching tasks from OmniFocus...`);
-    // Index-based iteration — OF4 whose clause is unreliable, this is the proven approach
+    console.log(`[${new Date().toLocaleTimeString()}] Fetching active tasks from OmniFocus...`);
     const fetchScript = `
 tell application "OmniFocus"
   tell document 1
     set output to ""
-    set allTasks to every flattened task
-    set taskCount to count of allTasks
-    repeat with i from 1 to taskCount
-      set t to item i of allTasks
-      if completed of t is false then
-        set tId to id of t
-        set tName to name of t
-        set tProj to ""
-        if containing project of t is not missing value then
-          set tProj to name of containing project of t
-        end if
+
+    -- 1. Inbox tasks
+    set inbTasks to every inbox task
+    repeat with t in inbTasks
+      if completed of t is false and dropped of t is false then
         set tDue to ""
         if due date of t is not missing value then
           set tDue to (due date of t) as string
         end if
-        set tFlag to flagged of t as string
-        set output to output & tId & "|" & tName & "|" & tProj & "|" & tDue & "|" & tFlag & return
+        set output to output & (id of t) & "|" & (name of t) & "|📥 Inbox|" & tDue & "|" & (flagged of t as string) & linefeed
       end if
     end repeat
+
+    -- 2. Active project leaf tasks
+    set actProjs to every flattened project whose status is active status
+    repeat with p in actProjs
+      set pName to name of p
+      set pTasks to every flattened task of p
+      repeat with t in pTasks
+        if completed of t is false and dropped of t is false and (number of tasks of t is 0) then
+          set tDue to ""
+          if due date of t is not missing value then
+            set tDue to (due date of t) as string
+          end if
+          set output to output & (id of t) & "|" & (name of t) & "|" & pName & "|" & tDue & "|" & (flagged of t as string) & linefeed
+        end if
+      end repeat
+    end repeat
+
     return output
   end tell
 end tell`;
 
     try {
-      const raw = await runAppleScript(fetchScript, 120000); // 2 min timeout
+      const raw = await runAppleScript(fetchScript, 60000);
 
       function parseASDate(str) {
         if (!str || !str.trim()) return null;
         try {
           const d = new Date(str.replace(" at ", " "));
-          if (isNaN(d)) return null;
-          return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+          if (!isNaN(d)) {
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+          }
+          // Fallback: DD/MM/YYYY
+          const m = str.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/);
+          if (m) {
+            return `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
+          }
+          return null;
         } catch { return null; }
       }
 
-      const tasks = raw.split("\n")
+      const tasks = raw.split(/\r\n|\r|\n/)
         .filter(line => line.includes("|"))
         .map(line => {
           const parts = line.split("|");
@@ -160,7 +176,7 @@ end tell`;
         })
         .filter(t => t.id && t.name);
 
-      console.log(`[${new Date().toLocaleTimeString()}] ✓ Returned ${tasks.length} tasks`);
+      console.log(`[${new Date().toLocaleTimeString()}] ✓ Returned ${tasks.length} active tasks`);
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ success: true, tasks }));
     } catch (err) {

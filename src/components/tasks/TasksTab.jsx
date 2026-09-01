@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { INITIAL_OF_TASKS, ofColor } from "../../data/tasks.js";
 import { dateKey } from "../../utils/dates.js";
 import { getBridgeUrl, getSupervisorUrl } from "../../utils/config.js";
@@ -9,18 +9,6 @@ import { BridgeToggleButton } from "../shared/BridgeToggleButton.jsx";
 import { TaskListView } from "./TaskListView.jsx";
 import { TaskCalendarView } from "./TaskCalendarView.jsx";
 import { PendingSyncSidebar } from "./PendingSyncSidebar.jsx";
-
-const OF_FILTER_OPTIONS = [
-  "All",
-  "Overdue",
-  "Flagged",
-  "📆 Day 2 Day",
-  "🔴 Sell 300 Planners 📖",
-  "🔴Publish Project Guidance Platform👨‍💻",
-  "🟢Eliminate CC Debt 💳 🚫",
-  "⚪️Complete Scrum Master certification",
-  "🟢Buy Scan Home🏡",
-];
 
 const OMNIFOCUS_QUICK_LINKS = [
   ["Inbox", "omnifocus:///inbox"],
@@ -46,6 +34,15 @@ export default function TasksTab({
   const [ofDragOver, setOfDragOver] = useState(null);
   const [pendingChanges, setPendingChanges] = usePersistentState("tasks.pendingChanges", []);
   const [ofScriptCopied, setOfScriptCopied] = useState(false);
+
+  const projectList = useMemo(() => {
+    return Array.from(new Set(ofTasks.map((t) => t.project).filter(Boolean)));
+  }, [ofTasks]);
+
+  const filterOptions = useMemo(
+    () => ["All", "Overdue", "Flagged", ...projectList],
+    [projectList]
+  );
 
   const ofFiltered = useMemo(() => {
     if (ofFilter === "Flagged") return ofTasks.filter((t) => t.flagged);
@@ -94,7 +91,13 @@ export default function TasksTab({
         setOfDragOver(null);
         return;
       }
-      setOfTasks((p) => p.map((t) => (t.id === ofDragItem.id ? { ...t, dueDate: newDate } : t)));
+      setOfTasks((p) => {
+        const updated = p.map((t) => (t.id === ofDragItem.id ? { ...t, dueDate: newDate } : t));
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem("dorianos_of_tasks", JSON.stringify(updated));
+        }
+        return updated;
+      });
       setPendingChanges((p) => [
         ...p.filter((c) => c.id !== ofDragItem.id),
         { id: ofDragItem.id, name: ofDragItem.name, oldDate: ofDragItem.dueDate, newDate },
@@ -145,11 +148,13 @@ export default function TasksTab({
     setRefreshStatus("loading");
     try {
       const bridgeUrl = getBridgeUrl();
-      const r = await fetch(`${bridgeUrl}/tasks`, { signal: AbortSignal.timeout(120000) });
+      const r = await fetch(`${bridgeUrl}/tasks`, { signal: AbortSignal.timeout(60000) });
       const data = await r.json();
       if (data.success && data.tasks.length > 0) {
         setOfTasks(data.tasks);
-        setOfFilter("All");
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem("dorianos_of_tasks", JSON.stringify(data.tasks));
+        }
         setRefreshStatus("done");
       } else {
         throw new Error(data.error || "No tasks returned");
@@ -159,6 +164,15 @@ export default function TasksTab({
       setRefreshStatus("error");
     }
   }, [setRefreshStatus]);
+
+  // Auto-fetch whenever bridge is online
+  const hasAutoFetched = useRef(false);
+  useEffect(() => {
+    if (bridgeStatus === "online" && !hasAutoFetched.current) {
+      hasAutoFetched.current = true;
+      fetchOFTasks();
+    }
+  }, [bridgeStatus, fetchOFTasks]);
 
   const syncToOmniFocus = async () => {
     if (!pendingChanges.length) return;
@@ -268,7 +282,7 @@ export default function TasksTab({
         </div>
         <div style={{ width: 1, height: 24, background: t.border2 }} />
         <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-          {OF_FILTER_OPTIONS.map((f) => (
+          {filterOptions.map((f) => (
             <button
               key={f}
               className={`btn ${ofFilter === f ? "active" : ""}`}
