@@ -144,29 +144,28 @@ export default function TasksTab({
     }
   }, [autostartInstalled, setAutostartToggleStatus]);
 
+  const hasAutoFetched = useRef(false);
+
   const fetchOFTasks = useCallback(async () => {
     setRefreshStatus("loading");
     try {
       const bridgeUrl = getBridgeUrl();
-      const r = await fetch(`${bridgeUrl}/tasks`, { signal: AbortSignal.timeout(60000) });
+      const r = await fetch(`${bridgeUrl}/tasks`, { signal: AbortSignal.timeout(120000) });
       const data = await r.json();
       if (data.success && data.tasks.length > 0) {
         setOfTasks(data.tasks);
-        if (typeof window !== "undefined") {
-          window.localStorage.setItem("dorianos_of_tasks", JSON.stringify(data.tasks));
-        }
         setRefreshStatus("done");
       } else {
         throw new Error(data.error || "No tasks returned");
       }
     } catch (err) {
       console.error("Fetch OF tasks failed:", err.message);
+      hasAutoFetched.current = false;
       setRefreshStatus("error");
     }
-  }, [setRefreshStatus]);
+  }, [setRefreshStatus, setOfTasks]);
 
   // Auto-fetch whenever bridge is online
-  const hasAutoFetched = useRef(false);
   useEffect(() => {
     if (bridgeStatus === "online" && !hasAutoFetched.current) {
       hasAutoFetched.current = true;
