@@ -201,6 +201,88 @@ export default function TasksTab({
     }
   };
 
+  const completeTask = useCallback(
+    async (id) => {
+      setOfTasks((prev) => prev.filter((t) => t.id !== id));
+      try {
+        const bridgeUrl = getBridgeUrl();
+        const r = await fetch(`${bridgeUrl}/tasks/complete`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id }),
+          signal: AbortSignal.timeout(15000),
+        });
+        const data = await r.json();
+        if (!r.ok || !data.success) {
+          throw new Error(data.error || "Failed to complete task");
+        }
+      } catch (err) {
+        console.error("Complete task error:", err.message);
+        fetchOFTasks();
+      }
+    },
+    [setOfTasks, fetchOFTasks]
+  );
+
+  const toggleFlag = useCallback(
+    async (id, nextFlagged) => {
+      setOfTasks((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, flagged: nextFlagged } : t))
+      );
+      try {
+        const bridgeUrl = getBridgeUrl();
+        const r = await fetch(`${bridgeUrl}/tasks/flag`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, flagged: nextFlagged }),
+          signal: AbortSignal.timeout(15000),
+        });
+        const data = await r.json();
+        if (!r.ok || !data.success) {
+          throw new Error(data.error || "Failed to toggle flag");
+        }
+      } catch (err) {
+        console.error("Toggle flag error:", err.message);
+        fetchOFTasks();
+      }
+    },
+    [setOfTasks, fetchOFTasks]
+  );
+
+  const createTask = useCallback(
+    async ({ name, dueDate, flagged }) => {
+      const tempId = "temp_" + Date.now();
+      const newTask = {
+        id: tempId,
+        name,
+        project: "📥 Inbox",
+        dueDate: dueDate || null,
+        flagged: !!flagged,
+      };
+      setOfTasks((prev) => [newTask, ...prev]);
+      try {
+        const bridgeUrl = getBridgeUrl();
+        const r = await fetch(`${bridgeUrl}/tasks/create`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, dueDate, flagged }),
+          signal: AbortSignal.timeout(20000),
+        });
+        const data = await r.json();
+        if (r.ok && data.success && data.task) {
+          setOfTasks((prev) =>
+            prev.map((t) => (t.id === tempId ? data.task : t))
+          );
+        } else {
+          throw new Error(data.error || "Failed to create task");
+        }
+      } catch (err) {
+        console.error("Create task error:", err.message);
+      }
+    },
+    [setOfTasks]
+  );
+
   const copyFallbackScript = () => {
     if (!pendingChanges.length) return;
     const lines = pendingChanges.map(
@@ -451,7 +533,16 @@ export default function TasksTab({
       </div>
 
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-        {ofView === "dashboard" && <TaskListView ofFiltered={ofFiltered} t={t} />}
+        {ofView === "dashboard" && (
+          <TaskListView
+            ofFiltered={ofFiltered}
+            onCompleteTask={completeTask}
+            onToggleFlag={toggleFlag}
+            onCreateTask={createTask}
+            bridgeStatus={bridgeStatus}
+            t={t}
+          />
+        )}
         {ofView === "calendar" && (
           <TaskCalendarView
             ofMonth={ofMonth}

@@ -1,8 +1,26 @@
-import React from "react";
+import React, { useState } from "react";
 import { ofDueLabel } from "../../utils/dates.js";
 import { ofColor } from "../../data/tasks.js";
+import { QuickCaptureBar } from "./QuickCaptureBar.jsx";
 
-export function TaskListView({ ofFiltered, t }) {
+export function TaskListView({
+  ofFiltered,
+  onCompleteTask,
+  onToggleFlag,
+  onCreateTask,
+  bridgeStatus,
+  t,
+}) {
+  const [completingIds, setCompletingIds] = useState(new Set());
+
+  const handleComplete = async (id) => {
+    setCompletingIds((prev) => new Set([...prev, id]));
+    // Brief animation delay before removal
+    setTimeout(() => {
+      onCompleteTask?.(id);
+    }, 250);
+  };
+
   const grouped = ofFiltered.reduce((acc, task) => {
     (acc[task.project] = acc[task.project] || []).push(task);
     return acc;
@@ -16,9 +34,15 @@ export function TaskListView({ ofFiltered, t }) {
         padding: 20,
         display: "flex",
         flexDirection: "column",
-        gap: 20,
+        gap: 16,
       }}
     >
+      <QuickCaptureBar
+        onCreateTask={onCreateTask}
+        bridgeStatus={bridgeStatus}
+        t={t}
+      />
+
       {Object.entries(grouped).map(([project, tasks]) => (
         <div key={project}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -62,6 +86,9 @@ export function TaskListView({ ofFiltered, t }) {
                 upcoming: "📅 ",
                 nodate: "",
               }[due];
+
+              const isCompleting = completingIds.has(task.id);
+
               return (
                 <div
                   key={task.id}
@@ -74,15 +101,81 @@ export function TaskListView({ ofFiltered, t }) {
                     border: `1px solid ${due === "overdue" ? t.dangerBd : t.border2}`,
                     borderLeft: `3px solid ${ofColor(task.project)}`,
                     borderRadius: 7,
-                    transition: "background .12s",
-                    cursor: "default",
+                    transition: "all .2s ease",
+                    opacity: isCompleting ? 0.3 : 1,
+                    transform: isCompleting ? "scale(0.98)" : "none",
                   }}
-                  onMouseOver={(e) => (e.currentTarget.style.background = t.surface2)}
-                  onMouseOut={(e) =>
-                    (e.currentTarget.style.background = due === "overdue" ? t.dangerBg : t.surface)
-                  }
+                  onMouseOver={(e) => {
+                    if (!isCompleting) e.currentTarget.style.background = t.surface2;
+                  }}
+                  onMouseOut={(e) => {
+                    if (!isCompleting) {
+                      e.currentTarget.style.background = due === "overdue" ? t.dangerBg : t.surface;
+                    }
+                  }}
                 >
-                  {task.flagged && <span style={{ fontSize: 11, flexShrink: 0 }}>🚩</span>}
+                  {/* Circular Complete Checkbox */}
+                  <button
+                    type="button"
+                    onClick={() => handleComplete(task.id)}
+                    title="Complete task in OmniFocus"
+                    style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: "50%",
+                      border: `1.5px solid ${isCompleting ? "#10B981" : t.border3}`,
+                      background: isCompleting ? "#10B981" : "transparent",
+                      color: isCompleting ? "#fff" : "transparent",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      padding: 0,
+                      flexShrink: 0,
+                      transition: "all .15s ease",
+                    }}
+                    onMouseOver={(e) => {
+                      if (!isCompleting) {
+                        e.currentTarget.style.borderColor = "#10B981";
+                        e.currentTarget.style.color = "#10B981";
+                        e.currentTarget.style.background = "#10B98118";
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      if (!isCompleting) {
+                        e.currentTarget.style.borderColor = t.border3;
+                        e.currentTarget.style.color = "transparent";
+                        e.currentTarget.style.background = "transparent";
+                      }
+                    }}
+                  >
+                    <span style={{ fontSize: 10, fontWeight: 700, lineHeight: 1 }}>✓</span>
+                  </button>
+
+                  {/* Flag Toggle Button */}
+                  <button
+                    type="button"
+                    onClick={() => onToggleFlag?.(task.id, !task.flagged)}
+                    title={task.flagged ? "Unflag priority" : "Mark as priority"}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: "0 2px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      opacity: task.flagged ? 1 : 0.25,
+                      transition: "opacity .15s",
+                      flexShrink: 0,
+                      fontSize: 13,
+                    }}
+                    onMouseOver={(e) => (e.currentTarget.style.opacity = 1)}
+                    onMouseOut={(e) => (e.currentTarget.style.opacity = task.flagged ? 1 : 0.25)}
+                  >
+                    {task.flagged ? "🚩" : "⚐"}
+                  </button>
+
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div
                       style={{
@@ -92,6 +185,7 @@ export function TaskListView({ ofFiltered, t }) {
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
+                        textDecoration: isCompleting ? "line-through" : "none",
                       }}
                     >
                       {task.name}
@@ -103,6 +197,7 @@ export function TaskListView({ ofFiltered, t }) {
                       </div>
                     )}
                   </div>
+
                   <a
                     href={`omnifocus:///task/${task.id}`}
                     style={{

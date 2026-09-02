@@ -223,6 +223,134 @@ end tell`;
     return;
   }
 
+  // Complete task endpoint
+  if (req.method === "POST" && req.url === "/tasks/complete") {
+    let body = "";
+    req.on("data", chunk => body += chunk);
+    req.on("end", async () => {
+      try {
+        const { id } = JSON.parse(body || "{}");
+        if (!id) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Task ID required" }));
+          return;
+        }
+        const safeId = id.replace(/["\\]/g, "");
+        const script = `tell application "OmniFocus"
+  tell default document
+    try
+      set t to (first flattened task whose id is "${safeId}")
+      mark complete t
+      return "ok"
+    on error
+      set t to (inbox task id "${safeId}")
+      mark complete t
+      return "ok"
+    end try
+  end tell
+end tell`;
+        await runAppleScript(script);
+        console.log(`[${new Date().toLocaleTimeString()}] ✓ Completed task ${id}`);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: true, id }));
+      } catch (err) {
+        console.error(`[${new Date().toLocaleTimeString()}] ✗ Complete failed:`, err.message);
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // Create inbox task endpoint
+  if (req.method === "POST" && req.url === "/tasks/create") {
+    let body = "";
+    req.on("data", chunk => body += chunk);
+    req.on("end", async () => {
+      try {
+        const { name, dueDate, flagged } = JSON.parse(body || "{}");
+        if (!name || !name.trim()) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Task name required" }));
+          return;
+        }
+        const safeName = name.replace(/["\\]/g, "\\$&");
+        let dateProp = "";
+        if (dueDate) {
+          const d = new Date(dueDate.includes("T") ? dueDate : `${dueDate}T00:00:00`);
+          if (!isNaN(d)) {
+            const formatted = d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) + " 17:00:00";
+            dateProp = `, due date:date "${formatted}"`;
+          }
+        }
+        const flagProp = flagged ? ", flagged:true" : "";
+        const script = `tell application "OmniFocus"
+  tell default document
+    set newTask to make new inbox task with properties {name:"${safeName}"${flagProp}${dateProp}}
+    return id of newTask
+  end tell
+end tell`;
+        const newId = await runAppleScript(script);
+        console.log(`[${new Date().toLocaleTimeString()}] ✓ Created inbox task "${name}" (${newId})`);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({
+          success: true,
+          task: {
+            id: newId,
+            name: name.trim(),
+            project: "📥 Inbox",
+            dueDate: dueDate || null,
+            flagged: !!flagged
+          }
+        }));
+      } catch (err) {
+        console.error(`[${new Date().toLocaleTimeString()}] ✗ Create failed:`, err.message);
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // Toggle flag endpoint
+  if (req.method === "POST" && req.url === "/tasks/flag") {
+    let body = "";
+    req.on("data", chunk => body += chunk);
+    req.on("end", async () => {
+      try {
+        const { id, flagged } = JSON.parse(body || "{}");
+        if (!id) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Task ID required" }));
+          return;
+        }
+        const safeId = id.replace(/["\\]/g, "");
+        const script = `tell application "OmniFocus"
+  tell default document
+    try
+      set t to (first flattened task whose id is "${safeId}")
+      set flagged of t to ${flagged ? "true" : "false"}
+      return "ok"
+    on error
+      set t to (inbox task id "${safeId}")
+      set flagged of t to ${flagged ? "true" : "false"}
+      return "ok"
+    end try
+  end tell
+end tell`;
+        await runAppleScript(script);
+        console.log(`[${new Date().toLocaleTimeString()}] ✓ Toggled flag on ${id} -> ${flagged}`);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: true, id, flagged }));
+      } catch (err) {
+        console.error(`[${new Date().toLocaleTimeString()}] ✗ Flag toggle failed:`, err.message);
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
   // ── Insights endpoint ─────────────────────────────────────────────────────
   if (req.method === "GET" && req.url.startsWith("/insights")) {
     const params = new URL(req.url, "http://localhost").searchParams;
