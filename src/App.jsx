@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect, Suspense, lazy } from "react";
+import React, { useState, useMemo, useCallback, useEffect, useRef, Suspense, lazy } from "react";
 import { THEMES } from "./data/themes.js";
 import { INITIAL_DEBTS } from "./data/debts.js";
 import { LM_RECURRING, isDebtCharge } from "./data/cashflow.js";
@@ -85,10 +85,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (section === "tasks" || section === "insights") {
-      checkBridge();
-    }
-  }, [section, checkBridge]);
+    checkBridge();
+  }, [checkBridge]);
 
   const syncDebts = useCallback(async () => {
     setDebtSyncStatus("loading");
@@ -187,6 +185,19 @@ export default function App() {
     },
     [setLmSyncStatus]
   );
+
+  const hasAutoSyncedLM = useRef(false);
+  useEffect(() => {
+    if (!hasAutoSyncedLM.current) {
+      hasAutoSyncedLM.current = true;
+      syncDebts();
+      syncLM(60);
+    }
+  }, [syncDebts, syncLM]);
+
+  const syncAllLM = useCallback(async () => {
+    await Promise.allSettled([syncDebts(), syncLM(60)]);
+  }, [syncDebts, syncLM]);
 
   const todayEOD = useMemo(() => {
     const todayKey = dateKey(new Date());
@@ -340,6 +351,9 @@ export default function App() {
               debtMonthly={debtMonthly}
               payoffDate={payoffDate}
               stalled={stalled}
+              syncAllLM={syncAllLM}
+              lmSyncStatus={lmSyncStatus}
+              debtSyncStatus={debtSyncStatus}
               onNavigate={setSection}
               t={t}
             />

@@ -19,6 +19,9 @@ export default function TodayTab({
   debtMonthly,
   payoffDate,
   stalled,
+  syncAllLM,
+  lmSyncStatus,
+  debtSyncStatus,
   onNavigate,
   t,
 }) {
@@ -96,8 +99,65 @@ export default function TodayTab({
           </h1>
         </div>
 
-        {/* Bridge Status Indicator */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {/* Status Indicators */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          {/* Lunch Money Live Sync */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "4px 10px",
+              background: t.surface,
+              border: `1px solid ${t.border2}`,
+              borderRadius: 6,
+              fontSize: 11,
+            }}
+          >
+            <span
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: "50%",
+                background:
+                  lmSyncStatus === "loading" || debtSyncStatus === "loading"
+                    ? "#FBBF24"
+                    : lmSyncStatus === "error" || debtSyncStatus === "error"
+                    ? "#EF4444"
+                    : "#10B981",
+              }}
+            />
+            <span style={{ color: t.textDim }}>Lunch Money:</span>
+            <span style={{ fontWeight: 600, color: t.text }}>
+              {lmSyncStatus === "loading" || debtSyncStatus === "loading"
+                ? "Syncing…"
+                : lmSyncStatus === "error" || debtSyncStatus === "error"
+                ? "Offline / Cached"
+                : "Live Synced"}
+            </span>
+            {syncAllLM && (
+              <button
+                type="button"
+                onClick={syncAllLM}
+                disabled={lmSyncStatus === "loading" || debtSyncStatus === "loading"}
+                title="Re-sync Lunch Money balances and recurring charges now"
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: 0,
+                  fontSize: 12,
+                  color: t.textDim,
+                  lineHeight: 1,
+                  marginLeft: 2,
+                }}
+              >
+                ↻
+              </button>
+            )}
+          </div>
+
+          {/* Bridge Status Indicator */}
           <div
             style={{
               display: "flex",
