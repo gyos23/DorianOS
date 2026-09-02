@@ -2,7 +2,8 @@ import React, { useState, useMemo, useCallback } from "react";
 import { fmt } from "../../utils/formatters.js";
 import { dateKey, buildDays, buildWeeks, projectDates, addDays } from "../../utils/dates.js";
 import { uid } from "../../utils/formatters.js";
-import { CATEGORY_COLORS } from "../../data/cashflow.js";
+import { CATEGORY_COLORS, isDebtCharge } from "../../data/cashflow.js";
+import { usePersistentState } from "../../hooks/usePersistentState.js";
 import { StatCard } from "../layout/StatCard.jsx";
 import { CalendarView } from "./CalendarView.jsx";
 import { ListView } from "./ListView.jsx";
@@ -14,6 +15,7 @@ export default function CashFlowTab({
   cfBudget,
   setCfBudget,
   debtMonthly,
+  debts = [],
   lmData,
   setLmData,
   lmSyncStatus,
@@ -22,6 +24,7 @@ export default function CashFlowTab({
 }) {
   const [numDays, setNumDays] = useState(60);
   const [showLM, setShowLM] = useState(true);
+  const [reconcileDebt, setReconcileDebt] = usePersistentState("cashflow.reconcileDebt", true);
   const [charges, setCharges] = useState([]);
   const [dragItem, setDragItem] = useState(null);
   const [dragOver, setDragOver] = useState(null);
@@ -36,6 +39,11 @@ export default function CashFlowTab({
   const [selectedDay, setSelectedDay] = useState(null);
   const [activeView, setActiveView] = useState("calendar");
 
+  const baseCharges = useMemo(
+    () => [...(showLM ? lmData : []), ...charges],
+    [showLM, lmData, charges]
+  );
+
   const debtCharges = useMemo(() => {
     const res = [];
     const days = buildDays(new Date(), numDays);
@@ -45,28 +53,57 @@ export default function CashFlowTab({
         const mk = `${d.getFullYear()}-${d.getMonth()}`;
         if (!seen.has(mk)) {
           seen.add(mk);
+
+          let scheduledDebtSum = 0;
+          const matchedCharges = [];
+          if (reconcileDebt) {
+            for (const c of baseCharges) {
+              if (c.date && c.type === "expense" && isDebtCharge(c, debts)) {
+                const [y, mo] = c.date.split("-");
+                if (`${y}-${parseInt(mo, 10) - 1}` === mk) {
+                  scheduledDebtSum += c.amount || 0;
+                  matchedCharges.push(c);
+                }
+              }
+            }
+          }
+
+          const unallocated = reconcileDebt
+            ? Math.max(0, +(debtMonthly - scheduledDebtSum).toFixed(2))
+            : debtMonthly;
+
           res.push({
             id: `debt-${mk}`,
-            payee: "Debt Payoff Budget",
-            amount: debtMonthly,
+            payee:
+              reconcileDebt && scheduledDebtSum > 0
+                ? unallocated > 0
+                  ? "Debt Payoff Budget (Remaining Extra)"
+                  : "Debt Payoff Budget (Fully Covered)"
+                : "Debt Payoff Budget",
+            amount: unallocated,
             date: dateKey(d),
             type: "expense",
             source: "debt-calculator",
             category: "Debt",
             _isDebtPayment: true,
+            _reconciled: reconcileDebt,
+            _targetDebt: debtMonthly,
+            _scheduledDebt: scheduledDebtSum,
+            _isFullyCovered: reconcileDebt && unallocated === 0 && scheduledDebtSum > 0,
+            _matchedPayees: matchedCharges.map((c) => `${c.payee} ($${c.amount})`),
           });
         }
       }
     }
     return res;
-  }, [numDays, debtMonthly]);
+  }, [numDays, debtMonthly, baseCharges, reconcileDebt, debts]);
 
   const days = useMemo(() => buildDays(new Date(), numDays), [numDays]);
   const weeks = useMemo(() => buildWeeks(days), [days]);
 
   const allCharges = useMemo(
-    () => [...(showLM ? lmData : []), ...charges, ...debtCharges],
-    [showLM, lmData, charges, debtCharges]
+    () => [...baseCharges, ...debtCharges],
+    [baseCharges, debtCharges]
   );
 
   const hiddenLMIds = useMemo(
@@ -285,17 +322,41 @@ export default function CashFlowTab({
           <div
             style={{
               marginLeft: "auto",
-              padding: "6px 14px",
-              background: t.dangerBg,
-              border: `1px solid ${t.dangerBd}`,
-              borderRadius: 8,
-              fontSize: 12,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
               flexShrink: 0,
             }}
           >
-            <span style={{ color: t.textDim, fontSize: 10 }}>From Payoff: </span>
-            <span style={{ color: t.danger, fontWeight: 600 }}>{fmt(debtMonthly)}/mo</span>
-            <span style={{ color: t.textDim, fontSize: 10 }}> · 1st of month</span>
+            <button
+              className={`btn ${reconcileDebt ? "active" : ""}`}
+              onClick={() => setReconcileDebt((p) => !p)}
+              title={
+                reconcileDebt
+                  ? "Debt Reconciled: Offsets debt budget by your scheduled CC charges to prevent double counting"
+                  : "Unreconciled: Injects full debt budget on top of all CC charges"
+              }
+              style={{
+                fontSize: 11,
+                borderColor: reconcileDebt ? t.accent : "",
+                color: reconcileDebt ? t.accent : t.textDim,
+              }}
+            >
+              {reconcileDebt ? "⚡ Reconcile CCs: ON" : "⚡ Reconcile CCs: OFF"}
+            </button>
+            <div
+              style={{
+                padding: "6px 14px",
+                background: t.dangerBg,
+                border: `1px solid ${t.dangerBd}`,
+                borderRadius: 8,
+                fontSize: 12,
+              }}
+            >
+              <span style={{ color: t.textDim, fontSize: 10 }}>From Payoff: </span>
+              <span style={{ color: t.danger, fontWeight: 600 }}>{fmt(debtMonthly)}/mo</span>
+              <span style={{ color: t.textDim, fontSize: 10 }}> · 1st of month</span>
+            </div>
           </div>
         </div>
 

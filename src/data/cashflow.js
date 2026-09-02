@@ -12,6 +12,33 @@ export const CATEGORY_COLORS = {
   Manual: "#94A3B8",
 };
 
+export function isDebtCharge(charge, debts = []) {
+  if (!charge) return false;
+  if (charge._isDebtPayment) return true;
+  if (charge.category === "Debt") return true;
+  const payee = (charge.payee || "").toLowerCase().trim();
+  if (!payee) return false;
+  return debts.some((d) => {
+    const debtName = (d.name || "").toLowerCase().trim();
+    if (!debtName) return false;
+    if (payee === debtName) return true;
+    if (payee.includes(debtName) || debtName.includes(payee)) return true;
+    const prefixes = [
+      "amex",
+      "apple card",
+      "nbkc",
+      "capital one",
+      "spark",
+      "paypal",
+      "discover",
+      "chase",
+      "citi",
+      "barclays",
+    ];
+    return prefixes.some((p) => payee.includes(p) && debtName.includes(p));
+  });
+}
+
 export const LM_RECURRING = [
   { id: "lm-afa-mar", payee: "AFA ORTIZ", amount: 950, date: "2026-03-03", type: "income", source: "lunchmoney" },
   { id: "lm-salary-mar", payee: "AMACH Salary", amount: +(5000 * EUR).toFixed(2), date: "2026-03-28", type: "income", source: "lunchmoney" },

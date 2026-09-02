@@ -121,23 +121,37 @@ export function DayDetailPanel({
                   whiteSpace: "nowrap",
                   fontWeight: 500,
                 }}
+                title={
+                  c._matchedPayees?.length
+                    ? `Matched CC Charges:\n${c._matchedPayees.join("\n")}`
+                    : c.payee
+                }
               >
                 {c.payee}
               </div>
               <div style={{ fontSize: 9, color: t.textDim }}>
-                {c._isDebtPayment ? "⚡ payoff calc" : c.category}
+                {c._isDebtPayment
+                  ? c._reconciled && c._scheduledDebt > 0
+                    ? `⚡ Reconciled: $${c._targetDebt} target − $${c._scheduledDebt} CCs`
+                    : "⚡ payoff calc"
+                  : c.category}
               </div>
             </div>
             <div
               style={{
                 fontSize: 12,
                 fontWeight: 700,
-                color: c.type === "income" ? t.accent : t.danger,
+                color:
+                  c.type === "income"
+                    ? t.accent
+                    : c.amount === 0
+                    ? t.accentSub
+                    : t.danger,
                 flexShrink: 0,
                 fontVariantNumeric: "tabular-nums",
               }}
             >
-              {c.type === "income" ? "+" : "−"}
+              {c.type === "income" ? "+" : c.amount === 0 ? "" : "−"}
               {fmt(c.amount)}
             </div>
             {c.source !== "lunchmoney" && !c._isDebtPayment && (

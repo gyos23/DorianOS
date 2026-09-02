@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect, Suspense, lazy } from "react";
 import { THEMES } from "./data/themes.js";
 import { INITIAL_DEBTS } from "./data/debts.js";
-import { LM_RECURRING } from "./data/cashflow.js";
+import { LM_RECURRING, isDebtCharge } from "./data/cashflow.js";
 import { computeAmortization } from "./utils/amortization.js";
 import { dateKey, addDays, projectDates, buildDays } from "./utils/dates.js";
 import { useStatusTimer } from "./hooks/useStatusTimer.js";
@@ -198,9 +198,26 @@ export default function App() {
         const mk = `${d.getFullYear()}-${d.getMonth()}`;
         if (!seen.has(mk)) {
           seen.add(mk);
-          const k = dateKey(d);
-          if (!m[k]) m[k] = [];
-          m[k].push({ amount: debtMonthly, type: "expense" });
+
+          // Reconcile: subtract any explicit debt payments scheduled in lmData for this month
+          const scheduledDebt = lmData
+            .filter((c) => {
+              if (!c.date) return false;
+              const [y, mo] = c.date.split("-");
+              return (
+                `${y}-${parseInt(mo, 10) - 1}` === mk &&
+                c.type === "expense" &&
+                isDebtCharge(c, debts)
+              );
+            })
+            .reduce((s, c) => s + (c.amount || 0), 0);
+
+          const unallocated = Math.max(0, +(debtMonthly - scheduledDebt).toFixed(2));
+          if (unallocated > 0) {
+            const k = dateKey(d);
+            if (!m[k]) m[k] = [];
+            m[k].push({ amount: unallocated, type: "expense" });
+          }
         }
       }
     }
@@ -231,7 +248,7 @@ export default function App() {
       },
       cashZeroDate: zeroDate,
     };
-  }, [lmData, startBal, debtMonthly]);
+  }, [lmData, startBal, debtMonthly, debts]);
 
   // CSS variables dynamically bound to theme
   const cssVariables = useMemo(
@@ -329,6 +346,7 @@ export default function App() {
               cfBudget={cfBudget}
               setCfBudget={setCfBudget}
               debtMonthly={debtMonthly}
+              debts={debts}
               lmData={lmData}
               setLmData={setLmData}
               lmSyncStatus={lmSyncStatus}
