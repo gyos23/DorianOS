@@ -8,8 +8,10 @@ import { useStatusTimer } from "./hooks/useStatusTimer.js";
 import { usePersistentState } from "./hooks/usePersistentState.js";
 import { getBridgeUrl } from "./utils/config.js";
 import { Navbar } from "./components/layout/Navbar.jsx";
+import { useOmniFocus } from "./hooks/useOmniFocus.js";
 
 // Lazy load tabs to code-split Recharts and heavy views
+const TodayTab = lazy(() => import("./components/today/TodayTab.jsx"));
 const DebtPayoffTab = lazy(() => import("./components/payoff/DebtPayoffTab.jsx"));
 const CashFlowTab = lazy(() => import("./components/cashflow/CashFlowTab.jsx"));
 const TasksTab = lazy(() => import("./components/tasks/TasksTab.jsx"));
@@ -23,7 +25,7 @@ export default function App() {
   const [themeName, setThemeName] = usePersistentState("themeName", "slate");
   const t = THEMES[themeName];
 
-  const [section, setSection] = usePersistentState("section", "payoff");
+  const [section, setSection] = usePersistentState("section", "today");
   const [visitedSections, setVisitedSections] = useState(() => new Set([section]));
   useEffect(() => {
     setVisitedSections((prev) => (prev.has(section) ? prev : new Set(prev).add(section)));
@@ -61,7 +63,16 @@ export default function App() {
   // Bridge state
   const [bridgeStatus, setBridgeStatus] = useState("unknown");
   const [syncStatus, setSyncStatus] = useStatusTimer();
-  const [refreshStatus, setRefreshStatus] = useStatusTimer();
+  const {
+    ofTasks,
+    setOfTasks,
+    refreshStatus,
+    setRefreshStatus,
+    fetchOFTasks,
+    completeTask,
+    toggleFlag,
+    createTask,
+  } = useOmniFocus(bridgeStatus);
 
   const checkBridge = useCallback(async () => {
     try {
@@ -312,6 +323,29 @@ export default function App() {
       />
 
       <Suspense fallback={<TabLoading />}>
+        {visitedSections.has("today") && (
+          <div style={{ display: section === "today" ? "contents" : "none" }}>
+            <TodayTab
+              ofTasks={ofTasks}
+              onCompleteTask={completeTask}
+              onToggleFlag={toggleFlag}
+              onCreateTask={createTask}
+              bridgeStatus={bridgeStatus}
+              checkBridge={checkBridge}
+              startBal={startBal}
+              forecasts={forecasts}
+              cashZeroDate={cashZeroDate}
+              lmData={lmData}
+              totalDebt={totalDebt}
+              debtMonthly={debtMonthly}
+              payoffDate={payoffDate}
+              stalled={stalled}
+              onNavigate={setSection}
+              t={t}
+            />
+          </div>
+        )}
+
         {visitedSections.has("payoff") && (
           <div style={{ display: section === "payoff" ? "contents" : "none" }}>
             <DebtPayoffTab
@@ -365,6 +399,12 @@ export default function App() {
               setSyncStatus={setSyncStatus}
               refreshStatus={refreshStatus}
               setRefreshStatus={setRefreshStatus}
+              ofTasks={ofTasks}
+              setOfTasks={setOfTasks}
+              fetchOFTasks={fetchOFTasks}
+              completeTask={completeTask}
+              toggleFlag={toggleFlag}
+              createTask={createTask}
               t={t}
             />
           </div>

@@ -3,6 +3,7 @@ import { THEMES } from "../../data/themes.js";
 import { fmt } from "../../utils/formatters.js";
 
 const NAV_ITEMS = [
+  ["today", "★ Today"],
   ["payoff", "💳 Debt Payoff"],
   ["cashflow", "📅 Cash Flow"],
   ["tasks", "✅ Tasks"],

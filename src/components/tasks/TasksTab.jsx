@@ -22,11 +22,23 @@ export default function TasksTab({
   checkBridge,
   syncStatus,
   setSyncStatus,
-  refreshStatus,
-  setRefreshStatus,
+  refreshStatus: propRefreshStatus,
+  setRefreshStatus: propSetRefreshStatus,
+  ofTasks: propOfTasks,
+  setOfTasks: propSetOfTasks,
+  fetchOFTasks: propFetchOFTasks,
+  completeTask: propCompleteTask,
+  toggleFlag: propToggleFlag,
+  createTask: propCreateTask,
   t,
 }) {
-  const [ofTasks, setOfTasks] = usePersistentState("tasks.ofTasks", INITIAL_OF_TASKS);
+  const [internalOfTasks, setInternalOfTasks] = usePersistentState("tasks.ofTasks", INITIAL_OF_TASKS);
+  const ofTasks = propOfTasks ?? internalOfTasks;
+  const setOfTasks = propSetOfTasks ?? setInternalOfTasks;
+  const [internalRefreshStatus, setInternalRefreshStatus] = useStatusTimer();
+  const refreshStatus = propRefreshStatus ?? internalRefreshStatus;
+  const setRefreshStatus = propSetRefreshStatus ?? setInternalRefreshStatus;
+
   const [ofView, setOfView] = usePersistentState("tasks.ofView", "dashboard");
   const [ofMonth, setOfMonth] = useState(() => new Date());
   const [ofFilter, setOfFilter] = usePersistentState("tasks.ofFilter", "All");
@@ -146,7 +158,7 @@ export default function TasksTab({
 
   const hasAutoFetched = useRef(false);
 
-  const fetchOFTasks = useCallback(async () => {
+  const internalFetchOFTasks = useCallback(async () => {
     setRefreshStatus("loading");
     try {
       const bridgeUrl = getBridgeUrl();
@@ -164,6 +176,8 @@ export default function TasksTab({
       setRefreshStatus("error");
     }
   }, [setRefreshStatus, setOfTasks]);
+
+  const fetchOFTasks = propFetchOFTasks || internalFetchOFTasks;
 
   // Auto-fetch whenever bridge is online
   useEffect(() => {
@@ -201,7 +215,7 @@ export default function TasksTab({
     }
   };
 
-  const completeTask = useCallback(
+  const internalCompleteTask = useCallback(
     async (id) => {
       setOfTasks((prev) => prev.filter((t) => t.id !== id));
       try {
@@ -223,8 +237,9 @@ export default function TasksTab({
     },
     [setOfTasks, fetchOFTasks]
   );
+  const completeTask = propCompleteTask || internalCompleteTask;
 
-  const toggleFlag = useCallback(
+  const internalToggleFlag = useCallback(
     async (id, nextFlagged) => {
       setOfTasks((prev) =>
         prev.map((t) => (t.id === id ? { ...t, flagged: nextFlagged } : t))
@@ -248,8 +263,9 @@ export default function TasksTab({
     },
     [setOfTasks, fetchOFTasks]
   );
+  const toggleFlag = propToggleFlag || internalToggleFlag;
 
-  const createTask = useCallback(
+  const internalCreateTask = useCallback(
     async ({ name, dueDate, flagged }) => {
       const tempId = "temp_" + Date.now();
       const newTask = {
@@ -282,6 +298,7 @@ export default function TasksTab({
     },
     [setOfTasks]
   );
+  const createTask = propCreateTask || internalCreateTask;
 
   const copyFallbackScript = () => {
     if (!pendingChanges.length) return;
