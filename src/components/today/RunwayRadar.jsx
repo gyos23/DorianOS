@@ -70,7 +70,7 @@ export function RunwayRadar({
           <span style={{ fontSize: 16 }}>⏱️</span>
           <span
             style={{
-              fontFamily: "'Syne',sans-serif",
+              fontFamily: "'Plus Jakarta Sans',sans-serif",
               fontSize: 14,
               fontWeight: 700,
               color: t.text,

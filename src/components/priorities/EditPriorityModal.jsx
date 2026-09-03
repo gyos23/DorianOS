@@ -121,7 +121,7 @@ export function EditPriorityModal({
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <h2
             style={{
-              fontFamily: "'Syne',sans-serif",
+              fontFamily: "'Plus Jakarta Sans',sans-serif",
               fontSize: 18,
               fontWeight: 800,
               color: t.text,

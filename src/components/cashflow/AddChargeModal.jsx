@@ -16,7 +16,7 @@ export function AddChargeModal({
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div
           style={{
-            fontFamily: "'Syne',sans-serif",
+            fontFamily: "'Plus Jakarta Sans',sans-serif",
             fontSize: 17,
             fontWeight: 800,
             color: t.accent,

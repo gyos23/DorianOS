@@ -62,7 +62,7 @@ export function TaskListView({
                 color: t.textMuted,
                 textTransform: "uppercase",
                 letterSpacing: ".1em",
-                fontFamily: "'Syne',sans-serif",
+                fontFamily: "'Plus Jakarta Sans',sans-serif",
               }}
             >
               {project}

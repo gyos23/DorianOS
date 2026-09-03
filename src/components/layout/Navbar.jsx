@@ -38,7 +38,7 @@ export function Navbar({
     >
       <div
         style={{
-          fontFamily: "'Syne',sans-serif",
+          fontFamily: "'Plus Jakarta Sans',sans-serif",
           fontSize: 16,
           fontWeight: 800,
           color: t.accent,

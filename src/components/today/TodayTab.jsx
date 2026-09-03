@@ -93,7 +93,7 @@ export default function TodayTab({
           </div>
           <h1
             style={{
-              fontFamily: "'Syne',sans-serif",
+              fontFamily: "'Plus Jakarta Sans',sans-serif",
               fontSize: 26,
               fontWeight: 800,
               color: t.text,
@@ -349,7 +349,7 @@ export default function TodayTab({
               <span style={{ fontSize: 16 }}>🎯</span>
               <span
                 style={{
-                  fontFamily: "'Syne',sans-serif",
+                  fontFamily: "'Plus Jakarta Sans',sans-serif",
                   fontSize: 14,
                   fontWeight: 700,
                   color: t.text,
@@ -485,7 +485,7 @@ export default function TodayTab({
                 <span style={{ fontSize: 16 }}>💳</span>
                 <span
                   style={{
-                    fontFamily: "'Syne',sans-serif",
+                    fontFamily: "'Plus Jakarta Sans',sans-serif",
                     fontSize: 14,
                     fontWeight: 700,
                     color: t.text,

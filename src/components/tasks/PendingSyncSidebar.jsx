@@ -27,7 +27,7 @@ export function PendingSyncSidebar({
       }}
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 13, color: t.accent }}>
+        <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 800, fontSize: 13, color: t.accent }}>
           Pending ({pendingChanges.length})
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 5 }}>

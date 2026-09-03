@@ -51,7 +51,7 @@ export function TaskCalendarView({
         </button>
         <span
           style={{
-            fontFamily: "'Syne',sans-serif",
+            fontFamily: "'Plus Jakarta Sans',sans-serif",
             fontWeight: 800,
             fontSize: 15,
             color: t.text,

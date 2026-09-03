@@ -472,7 +472,7 @@ export default function TasksTab({
                     : bridgeStatus === "offline"
                     ? t.danger
                     : t.textDim,
-                fontFamily: "'Syne',sans-serif",
+                fontFamily: "'Plus Jakarta Sans',sans-serif",
                 fontWeight: 700,
                 letterSpacing: ".06em",
                 textTransform: "uppercase",
@@ -528,7 +528,7 @@ export default function TasksTab({
                 padding: "4px 10px",
                 border: `1px solid ${t.border3}`,
                 borderRadius: 6,
-                fontFamily: "'Syne',sans-serif",
+                fontFamily: "'Plus Jakarta Sans',sans-serif",
                 fontWeight: 700,
                 letterSpacing: ".06em",
                 textTransform: "uppercase",

@@ -91,7 +91,7 @@ export default function PrioritiesTab({
         <div>
           <h1
             style={{
-              fontFamily: "'Syne',sans-serif",
+              fontFamily: "'Plus Jakarta Sans',sans-serif",
               fontSize: 24,
               fontWeight: 800,
               color: t.text,
