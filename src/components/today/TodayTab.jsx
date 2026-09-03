@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { fmt } from "../../utils/formatters.js";
 import { dateKey } from "../../utils/dates.js";
+import { PILLARS } from "../../data/priorities.js";
 import { TodayFocusMatrix } from "./TodayFocusMatrix.jsx";
 import { RunwayRadar } from "./RunwayRadar.jsx";
 
@@ -22,6 +23,7 @@ export default function TodayTab({
   syncAllLM,
   lmSyncStatus,
   debtSyncStatus,
+  priorities = [],
   onNavigate,
   t,
 }) {
@@ -48,6 +50,10 @@ export default function TodayTab({
   const flaggedCount = useMemo(
     () => ofTasks.filter((t) => t.flagged).length,
     [ofTasks]
+  );
+  const activePriorities = useMemo(
+    () => priorities.filter((p) => p.status === "active"),
+    [priorities]
   );
 
   return (
@@ -324,6 +330,112 @@ export default function TodayTab({
           </div>
         </div>
       </div>
+
+      {/* Strategic Priorities Quick Meter Bar */}
+      {activePriorities.length > 0 && (
+        <div
+          style={{
+            background: t.surface,
+            border: `1px solid ${t.border2}`,
+            borderRadius: 12,
+            padding: "16px 20px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 16 }}>🎯</span>
+              <span
+                style={{
+                  fontFamily: "'Syne',sans-serif",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: t.text,
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                Quarterly Strategic Priorities ({activePriorities.length})
+              </span>
+            </div>
+            <button
+              className="btn"
+              onClick={() => onNavigate("priorities")}
+              style={{ fontSize: 11, padding: "3px 10px", color: t.textDim }}
+            >
+              Open Priorities Hub →
+            </button>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+              gap: 12,
+            }}
+          >
+            {activePriorities.map((p) => {
+              const pillar = PILLARS[p.pillar] || PILLARS.forward;
+              const pct =
+                p.targetValue > 0
+                  ? Math.min(100, Math.round((p.currentValue / p.targetValue) * 100))
+                  : 0;
+              return (
+                <div
+                  key={p.id}
+                  onClick={() => onNavigate("priorities")}
+                  style={{
+                    background: t.surface2,
+                    border: `1px solid ${t.border2}`,
+                    borderLeft: `3px solid ${pillar.color}`,
+                    borderRadius: 8,
+                    padding: "10px 14px",
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 6,
+                    transition: "transform .12s",
+                  }}
+                  onMouseOver={(e) => (e.currentTarget.style.transform = "translateY(-1px)")}
+                  onMouseOut={(e) => (e.currentTarget.style.transform = "none")}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: t.text }}>
+                      {pillar.icon} {p.title}
+                    </span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: pillar.color }}>
+                      {p.currentValue} / {p.targetValue} {p.unit}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      width: "100%",
+                      height: 5,
+                      background: t.border2,
+                      borderRadius: 3,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: `${pct}%`,
+                        height: "100%",
+                        background: pillar.color,
+                        borderRadius: 3,
+                      }}
+                    />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: t.textDim }}>
+                    <span>{pct}% complete</span>
+                    {p.targetDate && <span>Target: {p.targetDate}</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Main Command Center Grid: 2 Columns */}
       <div

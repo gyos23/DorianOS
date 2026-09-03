@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef, Suspense, lazy } from "react";
 import { THEMES } from "./data/themes.js";
 import { INITIAL_DEBTS } from "./data/debts.js";
+import { INITIAL_PRIORITIES } from "./data/priorities.js";
 import { LM_RECURRING, isDebtCharge } from "./data/cashflow.js";
 import { computeAmortization } from "./utils/amortization.js";
 import { dateKey, addDays, projectDates, buildDays } from "./utils/dates.js";
@@ -12,6 +13,7 @@ import { useOmniFocus } from "./hooks/useOmniFocus.js";
 
 // Lazy load tabs to code-split Recharts and heavy views
 const TodayTab = lazy(() => import("./components/today/TodayTab.jsx"));
+const PrioritiesTab = lazy(() => import("./components/priorities/PrioritiesTab.jsx"));
 const DebtPayoffTab = lazy(() => import("./components/payoff/DebtPayoffTab.jsx"));
 const CashFlowTab = lazy(() => import("./components/cashflow/CashFlowTab.jsx"));
 const TasksTab = lazy(() => import("./components/tasks/TasksTab.jsx"));
@@ -30,6 +32,7 @@ export default function App() {
   useEffect(() => {
     setVisitedSections((prev) => (prev.has(section) ? prev : new Set(prev).add(section)));
   }, [section]);
+  const [priorities, setPriorities] = usePersistentState("priorities.list", INITIAL_PRIORITIES);
   const [debts, setDebts] = usePersistentState("debts", INITIAL_DEBTS);
   const [strategy, setStrategy] = usePersistentState("strategy", "avalanche");
   const [extraPayment, setExtraPayment] = usePersistentState("extraPayment", 500);
@@ -354,7 +357,21 @@ export default function App() {
               syncAllLM={syncAllLM}
               lmSyncStatus={lmSyncStatus}
               debtSyncStatus={debtSyncStatus}
+              priorities={priorities}
               onNavigate={setSection}
+              t={t}
+            />
+          </div>
+        )}
+
+        {visitedSections.has("priorities") && (
+          <div style={{ display: section === "priorities" ? "contents" : "none" }}>
+            <PrioritiesTab
+              priorities={priorities}
+              setPriorities={setPriorities}
+              ofTasks={ofTasks}
+              completeTask={completeTask}
+              toggleFlag={toggleFlag}
               t={t}
             />
           </div>
