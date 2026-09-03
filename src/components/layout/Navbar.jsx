@@ -4,6 +4,7 @@ import { fmt } from "../../utils/formatters.js";
 
 const NAV_ITEMS = [
   ["today", "★ Today"],
+  ["review", "🔄 Review"],
   ["priorities", "🎯 Priorities"],
   ["payoff", "💳 Debt Payoff"],
   ["cashflow", "📅 Cash Flow"],

@@ -8,6 +8,7 @@ import { StatCard } from "../layout/StatCard.jsx";
 import { CalendarView } from "./CalendarView.jsx";
 import { ListView } from "./ListView.jsx";
 import { AddChargeModal } from "./AddChargeModal.jsx";
+import { ScenarioSimulator } from "./ScenarioSimulator.jsx";
 
 export default function CashFlowTab({
   startBal,
@@ -16,6 +17,8 @@ export default function CashFlowTab({
   setCfBudget,
   debtMonthly,
   debts = [],
+  strategy = "avalanche",
+  extraPayment = 500,
   lmData,
   setLmData,
   lmSyncStatus,
@@ -358,6 +361,18 @@ export default function CashFlowTab({
               <span style={{ color: t.textDim, fontSize: 10 }}> · 1st of month</span>
             </div>
           </div>
+        </div>
+
+        {/* What-If Career & Payoff Scenario Simulator */}
+        <div style={{ marginBottom: 18 }}>
+          <ScenarioSimulator
+            startBal={startBal}
+            debts={debts}
+            strategy={strategy}
+            extraPayment={extraPayment}
+            debtMonthly={debtMonthly}
+            t={t}
+          />
         </div>
 
         <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 10 }}>

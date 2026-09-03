@@ -13,6 +13,7 @@ import { useOmniFocus } from "./hooks/useOmniFocus.js";
 
 // Lazy load tabs to code-split Recharts and heavy views
 const TodayTab = lazy(() => import("./components/today/TodayTab.jsx"));
+const WeeklyReviewTab = lazy(() => import("./components/review/WeeklyReviewTab.jsx"));
 const PrioritiesTab = lazy(() => import("./components/priorities/PrioritiesTab.jsx"));
 const DebtPayoffTab = lazy(() => import("./components/payoff/DebtPayoffTab.jsx"));
 const CashFlowTab = lazy(() => import("./components/cashflow/CashFlowTab.jsx"));
@@ -364,6 +365,28 @@ export default function App() {
           </div>
         )}
 
+        {visitedSections.has("review") && (
+          <div style={{ display: section === "review" ? "contents" : "none" }}>
+            <WeeklyReviewTab
+              ofTasks={ofTasks}
+              completeTask={completeTask}
+              toggleFlag={toggleFlag}
+              priorities={priorities}
+              setPriorities={setPriorities}
+              startBal={startBal}
+              debts={debts}
+              strategy={strategy}
+              extraPayment={extraPayment}
+              debtMonthly={debtMonthly}
+              payoffDate={payoffDate}
+              forecasts={forecasts}
+              cashZeroDate={cashZeroDate}
+              onNavigate={setSection}
+              t={t}
+            />
+          </div>
+        )}
+
         {visitedSections.has("priorities") && (
           <div style={{ display: section === "priorities" ? "contents" : "none" }}>
             <PrioritiesTab
@@ -412,6 +435,8 @@ export default function App() {
               setCfBudget={setCfBudget}
               debtMonthly={debtMonthly}
               debts={debts}
+              strategy={strategy}
+              extraPayment={extraPayment}
               lmData={lmData}
               setLmData={setLmData}
               lmSyncStatus={lmSyncStatus}
