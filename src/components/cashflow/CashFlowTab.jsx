@@ -9,6 +9,7 @@ import { CalendarView } from "./CalendarView.jsx";
 import { ListView } from "./ListView.jsx";
 import { AddChargeModal } from "./AddChargeModal.jsx";
 import { ScenarioSimulator } from "./ScenarioSimulator.jsx";
+import { MonthlyBudgetVisualizer } from "./MonthlyBudgetVisualizer.jsx";
 
 export default function CashFlowTab({
   startBal,
@@ -375,10 +376,11 @@ export default function CashFlowTab({
           />
         </div>
 
-        <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 10 }}>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: activeView === "budget" ? 0 : 10 }}>
           {[
             ["calendar", "📅 Calendar"],
             ["list", "📋 List"],
+            ["budget", "⭕ Budget Circle"],
           ].map(([v, l]) => (
             <button
               key={v}
@@ -390,38 +392,41 @@ export default function CashFlowTab({
           ))}
         </div>
 
-        <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-          {["All", ...Object.keys(CATEGORY_COLORS).filter((k) => k !== "income"), "income"].map(
-            (cat) => (
-              <button
-                key={cat}
-                onClick={() => setFilterCat(cat)}
-                style={{
-                  background:
-                    filterCat === cat ? (CATEGORY_COLORS[cat] || t.accent) + "22" : t.surface2,
-                  color: CATEGORY_COLORS[cat] || t.accent,
-                  border: `1px solid ${
-                    filterCat === cat ? CATEGORY_COLORS[cat] || t.accent : t.border2
-                  }`,
-                  padding: "3px 12px",
-                  borderRadius: 20,
-                  fontSize: 10,
-                  textTransform: "uppercase",
-                  letterSpacing: ".07em",
-                  cursor: "pointer",
-                  transition: "all .15s",
-                  fontWeight: filterCat === cat ? 600 : 400,
-                }}
-              >
-                {cat}
-              </button>
-            )
-          )}
-        </div>
+        {activeView !== "budget" && (
+          <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+            {["All", ...Object.keys(CATEGORY_COLORS).filter((k) => k !== "income"), "income"].map(
+              (cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setFilterCat(cat)}
+                  style={{
+                    background:
+                      filterCat === cat ? (CATEGORY_COLORS[cat] || t.accent) + "22" : t.surface2,
+                    color: CATEGORY_COLORS[cat] || t.accent,
+                    border: `1px solid ${
+                      filterCat === cat ? CATEGORY_COLORS[cat] || t.accent : t.border2
+                    }`,
+                    padding: "3px 12px",
+                    borderRadius: 20,
+                    fontSize: 10,
+                    textTransform: "uppercase",
+                    letterSpacing: ".07em",
+                    cursor: "pointer",
+                    transition: "all .15s",
+                    fontWeight: filterCat === cat ? 600 : 400,
+                  }}
+                >
+                  {cat}
+                </button>
+              )
+            )}
+          </div>
+        )}
       </div>
 
       {/* Forecast strip */}
-      <div
+      {activeView !== "budget" && (
+        <div
         style={{
           display: "grid",
           gridTemplateColumns: `repeat(${3 + (cashZeroDate ? 1 : 0)},1fr)`,
@@ -488,6 +493,18 @@ export default function CashFlowTab({
           </div>
         )}
       </div>
+      )}
+
+      {activeView === "budget" && (
+        <div style={{ padding: "20px 24px 30px" }}>
+          <MonthlyBudgetVisualizer
+            lmData={lmData}
+            debts={debts}
+            debtMonthly={debtMonthly}
+            t={t}
+          />
+        </div>
+      )}
 
       {activeView === "list" && (
         <ListView
