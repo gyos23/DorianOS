@@ -48,6 +48,10 @@ export default function WeeklyReviewTab({
     commitments: false,
   });
 
+  const [lastReviewDate, setLastReviewDate] = usePersistentState("review.lastReviewDate", null);
+  const [reviewHistory, setReviewHistory] = usePersistentState("review.history", []);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+
   // Task analysis
   const inboxTasks = useMemo(() => {
     return ofTasks.filter((t) => t.project === "📥 Inbox" || (t.project || "").includes("Inbox"));
@@ -66,15 +70,62 @@ export default function WeeklyReviewTab({
   }, [priorities]);
 
   const toggleStepDone = (stepId) => {
-    setCompletedSteps((prev) => ({
+    setCompletedSteps((prev) => {
+      const next = { ...prev, [stepId]: !prev[stepId] };
+      // if this makes all steps true, record review date
+      if (Object.values(next).every(Boolean) && !lastReviewDate) {
+        setLastReviewDate(new Date().toISOString().split("T")[0]);
+      }
+      return next;
+    });
+  };
+
+  const handleStartNewReview = (confirmFirst = false) => {
+    if (
+      confirmFirst &&
+      !window.confirm("Start a new review session? This will archive your current notes and reset the 5-step checklist.")
+    ) {
+      return;
+    }
+
+    // Archive current session
+    const completedCount = Object.values(completedSteps).filter(Boolean).length;
+    if (completedCount > 0 || weeklyNotes.win || weeklyNotes.blocker) {
+      const entry = {
+        id: "rev-" + Date.now(),
+        date: lastReviewDate || new Date().toISOString().split("T")[0],
+        completedAt: new Date().toISOString(),
+        weeklyNotes: { ...weeklyNotes },
+      };
+      setReviewHistory((prev) => [entry, ...prev.slice(0, 51)]);
+    }
+
+    // Reset checklist
+    setCompletedSteps({
+      inbox: false,
+      pillars: false,
+      finance: false,
+      simulator: false,
+      commitments: false,
+    });
+
+    // Reset weekly win & blocker (keep commitments as starting base)
+    setWeeklyNotes((prev) => ({
       ...prev,
-      [stepId]: !prev[stepId],
+      win: "",
+      blocker: "",
     }));
+
+    setLastReviewDate(new Date().toISOString().split("T")[0]);
+    setActiveStep("inbox");
   };
 
   const handleUpdatePriority = (updated) => {
     setPriorities((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
   };
+
+  const completedCount = Object.values(completedSteps).filter(Boolean).length;
+  const isAllDone = completedCount === REVIEW_STEPS.length;
 
   return (
     <div
@@ -120,23 +171,89 @@ export default function WeeklyReviewTab({
           </div>
         </div>
 
-        {/* Step Progress Pill Indicator */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 11, color: t.textDim, fontWeight: 600 }}>Review Progress:</span>
-          <span
+        {/* Step Progress & Reset Actions */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {reviewHistory.length > 0 && (
+            <button
+              className="btn"
+              onClick={() => setShowHistoryModal(true)}
+              style={{ fontSize: 11, padding: "4px 8px", color: t.textDim }}
+            >
+              📜 Past Reviews ({reviewHistory.length})
+            </button>
+          )}
+
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 11, color: t.textDim, fontWeight: 600 }}>Progress:</span>
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 800,
+                color: isAllDone ? "#10B981" : t.text,
+                background: isAllDone ? "#10B98118" : t.surface2,
+                padding: "3px 8px",
+                borderRadius: 12,
+                border: `1px solid ${isAllDone ? "#10B98140" : t.border2}`,
+              }}
+            >
+              {completedCount} / {REVIEW_STEPS.length} Completed
+            </span>
+          </div>
+
+          <button
+            className={`btn ${isAllDone ? "active" : ""}`}
+            onClick={() => handleStartNewReview(completedCount > 0 && !isAllDone)}
+            title="Archive current review and reset checklist for a new week"
             style={{
-              fontSize: 12,
-              fontWeight: 800,
-              color: "#10B981",
-              background: "#10B98118",
-              padding: "3px 8px",
-              borderRadius: 12,
+              fontSize: 11,
+              padding: "5px 12px",
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
             }}
           >
-            {Object.values(completedSteps).filter(Boolean).length} / {REVIEW_STEPS.length} Completed
-          </span>
+            <span>🔄</span>
+            <span>{isAllDone ? "Start New Review" : "Reset Review"}</span>
+          </button>
         </div>
       </div>
+
+      {/* Completed Celebration & Next Week Reset Banner */}
+      {isAllDone && (
+        <div
+          style={{
+            background: "rgba(16, 185, 129, 0.1)",
+            border: "1px solid rgba(16, 185, 129, 0.3)",
+            borderRadius: 10,
+            padding: "14px 18px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 12,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 22 }}>🎉</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#10B981" }}>
+                Weekly Review Complete!
+              </div>
+              <div style={{ fontSize: 11, color: t.textSub, marginTop: 2 }}>
+                All 5 steps finished. When you're ready for your next review session, click to archive notes and start fresh.
+              </div>
+            </div>
+          </div>
+
+          <button
+            className="btn active"
+            onClick={() => handleStartNewReview(false)}
+            style={{ fontSize: 12, padding: "6px 14px" }}
+          >
+            🔄 Archive & Start Fresh Review
+          </button>
+        </div>
+      )}
 
       {/* Step Navigation Tabs */}
       <div
@@ -647,6 +764,94 @@ export default function WeeklyReviewTab({
                   />
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Review History Modal */}
+      {showHistoryModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.65)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 100,
+            padding: 20,
+          }}
+          onClick={() => setShowHistoryModal(false)}
+        >
+          <div
+            style={{
+              background: t.surface,
+              border: `1px solid ${t.border2}`,
+              borderRadius: 14,
+              width: "100%",
+              maxWidth: 600,
+              maxHeight: "80vh",
+              overflowY: "auto",
+              padding: 24,
+              boxShadow: "0 20px 40px rgba(0,0,0,0.4)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 16,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: t.text, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
+                📜 Past Weekly Reviews ({reviewHistory.length})
+              </h3>
+              <button
+                onClick={() => setShowHistoryModal(false)}
+                style={{ background: "none", border: "none", fontSize: 20, color: t.textDim, cursor: "pointer" }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {reviewHistory.map((rev) => (
+                <div
+                  key={rev.id}
+                  style={{
+                    background: t.surface2,
+                    border: `1px solid ${t.border2}`,
+                    borderRadius: 8,
+                    padding: 14,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 6,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, color: t.accent }}>
+                    <span>Week of {rev.date}</span>
+                    <span style={{ fontSize: 10, color: t.textDim }}>{new Date(rev.completedAt).toLocaleDateString()}</span>
+                  </div>
+
+                  {rev.weeklyNotes?.win && (
+                    <div style={{ fontSize: 12, color: t.text }}>
+                      <strong>🏆 Win: </strong> {rev.weeklyNotes.win}
+                    </div>
+                  )}
+
+                  {rev.weeklyNotes?.blocker && (
+                    <div style={{ fontSize: 12, color: t.textSub }}>
+                      <strong>🚧 Blocker / Solution: </strong> {rev.weeklyNotes.blocker}
+                    </div>
+                  )}
+
+                  {rev.weeklyNotes?.topCommitment1 && (
+                    <div style={{ fontSize: 11, color: t.textDim, marginTop: 4 }}>
+                      • {rev.weeklyNotes.topCommitment1}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         </div>
