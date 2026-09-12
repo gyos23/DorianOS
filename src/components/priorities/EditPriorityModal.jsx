@@ -9,6 +9,7 @@ export function EditPriorityModal({
   projectList = [],
   t,
 }) {
+  const [updateInOmniFocus, setUpdateInOmniFocus] = useState(true);
   const [formData, setFormData] = useState({
     id: "",
     title: "",
@@ -75,6 +76,7 @@ export function EditPriorityModal({
       ...formData,
       currentValue: parseFloat(formData.currentValue) || 0,
       targetValue: parseFloat(formData.targetValue) || 0,
+      updateInOmniFocus: formData.ofProject ? updateInOmniFocus : false,
     });
     onClose();
   };
@@ -464,14 +466,30 @@ export function EditPriorityModal({
             </div>
           </div>
 
+          {formData.ofProject && (
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: t.text, cursor: "pointer", marginTop: 2 }}>
+              <input
+                type="checkbox"
+                checked={updateInOmniFocus}
+                onChange={(e) => setUpdateInOmniFocus(e.target.checked)}
+              />
+              <span>Also update project note in OmniFocus (<strong>{formData.ofProject}</strong>)</span>
+            </label>
+          )}
+
           {/* Modal Actions */}
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 6 }}>
-            <button type="button" className="btn" onClick={onClose}>
-              Cancel
-            </button>
-            <button type="submit" className="btn active">
-              {priorityToEdit ? "Save Changes" : "Create Priority"}
-            </button>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
+            <div style={{ fontSize: 11, color: t.textDim }}>
+              {updateInOmniFocus && formData.ofProject ? "Will write SMART goal to OmniFocus" : "Saves to DorianOS"}
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button type="button" className="btn" onClick={onClose}>
+                Cancel
+              </button>
+              <button type="submit" className="btn active">
+                {priorityToEdit ? "Save Changes" : "Create Priority"}
+              </button>
+            </div>
           </div>
         </form>
       </div>

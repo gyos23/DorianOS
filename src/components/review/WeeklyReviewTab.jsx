@@ -96,6 +96,15 @@ export default function WeeklyReviewTab({
         date: lastReviewDate || new Date().toISOString().split("T")[0],
         completedAt: new Date().toISOString(),
         weeklyNotes: { ...weeklyNotes },
+        prioritiesSnapshot: priorities.map((p) => ({
+          id: p.id,
+          title: p.title,
+          pillar: p.pillar,
+          currentValue: p.currentValue,
+          targetValue: p.targetValue,
+          unit: p.unit,
+        })),
+        cashSnapshot: startBal,
       };
       setReviewHistory((prev) => [entry, ...prev.slice(0, 51)]);
     }
@@ -118,6 +127,17 @@ export default function WeeklyReviewTab({
 
     setLastReviewDate(new Date().toISOString().split("T")[0]);
     setActiveStep("inbox");
+  };
+
+  const deleteHistoryEntry = (id) => {
+    setReviewHistory((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  const clearAllHistory = () => {
+    if (window.confirm("Clear all archived weekly reviews?")) {
+      setReviewHistory([]);
+      setShowHistoryModal(false);
+    }
   };
 
   const handleUpdatePriority = (updated) => {
@@ -803,9 +823,21 @@ export default function WeeklyReviewTab({
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: t.text, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
-                📜 Past Weekly Reviews ({reviewHistory.length})
-              </h3>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: t.text, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
+                  📜 Past Weekly Reviews ({reviewHistory.length})
+                </h3>
+                {reviewHistory.length > 0 && (
+                  <button
+                    className="btn"
+                    onClick={clearAllHistory}
+                    style={{ fontSize: 10, padding: "2px 8px", color: t.danger }}
+                    title="Clear all archived history"
+                  >
+                    Clear All
+                  </button>
+                )}
+              </div>
               <button
                 onClick={() => setShowHistoryModal(false)}
                 style={{ background: "none", border: "none", fontSize: 20, color: t.textDim, cursor: "pointer" }}
@@ -814,44 +846,122 @@ export default function WeeklyReviewTab({
               </button>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {reviewHistory.map((rev) => (
                 <div
                   key={rev.id}
                   style={{
                     background: t.surface2,
                     border: `1px solid ${t.border2}`,
-                    borderRadius: 8,
-                    padding: 14,
+                    borderRadius: 10,
+                    padding: 16,
                     display: "flex",
                     flexDirection: "column",
-                    gap: 6,
+                    gap: 10,
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, color: t.accent }}>
-                    <span>Week of {rev.date}</span>
-                    <span style={{ fontSize: 10, color: t.textDim }}>{new Date(rev.completedAt).toLocaleDateString()}</span>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: t.accent }}>Week of {rev.date}</span>
+                      <span style={{ fontSize: 10, color: t.textDim }}>
+                        Completed {new Date(rev.completedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => deleteHistoryEntry(rev.id)}
+                      title="Delete this review entry"
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: t.textDim,
+                        cursor: "pointer",
+                        fontSize: 12,
+                        padding: "2px 6px",
+                      }}
+                      onMouseOver={(e) => (e.currentTarget.style.color = t.danger)}
+                      onMouseOut={(e) => (e.currentTarget.style.color = t.textDim)}
+                    >
+                      ✕
+                    </button>
                   </div>
 
-                  {rev.weeklyNotes?.win && (
-                    <div style={{ fontSize: 12, color: t.text }}>
-                      <strong>🏆 Win: </strong> {rev.weeklyNotes.win}
+                  {/* Win & Blocker */}
+                  {(rev.weeklyNotes?.win || rev.weeklyNotes?.blocker) && (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      {rev.weeklyNotes?.win && (
+                        <div style={{ background: t.surface, padding: 10, borderRadius: 6, border: `1px solid ${t.border3}`, fontSize: 11 }}>
+                          <div style={{ fontWeight: 700, color: "#10B981", marginBottom: 2 }}>🏆 Major Win</div>
+                          <div style={{ color: t.text }}>{rev.weeklyNotes.win}</div>
+                        </div>
+                      )}
+                      {rev.weeklyNotes?.blocker && (
+                        <div style={{ background: t.surface, padding: 10, borderRadius: 6, border: `1px solid ${t.border3}`, fontSize: 11 }}>
+                          <div style={{ fontWeight: 700, color: t.warning, marginBottom: 2 }}>🚧 Blocker / Solution</div>
+                          <div style={{ color: t.textSub }}>{rev.weeklyNotes.blocker}</div>
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  {rev.weeklyNotes?.blocker && (
-                    <div style={{ fontSize: 12, color: t.textSub }}>
-                      <strong>🚧 Blocker / Solution: </strong> {rev.weeklyNotes.blocker}
+                  {/* Weekly Commitments */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4, background: t.surface, padding: 10, borderRadius: 6, border: `1px solid ${t.border3}` }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: t.textDim, textTransform: "uppercase", letterSpacing: ".06em" }}>
+                      Weekly Commitments
                     </div>
-                  )}
+                    {rev.weeklyNotes?.topCommitment1 && (
+                      <div style={{ fontSize: 11, color: t.text }}>
+                        <span style={{ color: "#94A3B8", fontWeight: 700 }}>⚪️ Forward: </span>
+                        {rev.weeklyNotes.topCommitment1}
+                      </div>
+                    )}
+                    {rev.weeklyNotes?.topCommitment2 && (
+                      <div style={{ fontSize: 11, color: t.text }}>
+                        <span style={{ color: "#EF4444", fontWeight: 700 }}>🔴 Freedom: </span>
+                        {rev.weeklyNotes.topCommitment2}
+                      </div>
+                    )}
+                    {rev.weeklyNotes?.topCommitment3 && (
+                      <div style={{ fontSize: 11, color: t.text }}>
+                        <span style={{ color: "#22C55E", fontWeight: 700 }}>🟢 Finance: </span>
+                        {rev.weeklyNotes.topCommitment3}
+                      </div>
+                    )}
+                  </div>
 
-                  {rev.weeklyNotes?.topCommitment1 && (
-                    <div style={{ fontSize: 11, color: t.textDim, marginTop: 4 }}>
-                      • {rev.weeklyNotes.topCommitment1}
+                  {/* Priority Metrics Snapshot */}
+                  {Array.isArray(rev.prioritiesSnapshot) && rev.prioritiesSnapshot.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: t.textDim, textTransform: "uppercase", marginBottom: 4 }}>
+                        Metrics at Review Time
+                      </div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {rev.prioritiesSnapshot.map((ps) => (
+                          <div
+                            key={ps.id}
+                            style={{
+                              fontSize: 10,
+                              background: t.surface,
+                              border: `1px solid ${t.border3}`,
+                              borderRadius: 4,
+                              padding: "3px 8px",
+                              color: t.text,
+                            }}
+                          >
+                            <span style={{ fontWeight: 600 }}>{ps.title}: </span>
+                            <span style={{ color: t.accent }}>{ps.currentValue} / {ps.targetValue} {ps.unit}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
               ))}
+
+              {reviewHistory.length === 0 && (
+                <div style={{ textAlign: "center", padding: "24px 0", color: t.textDim, fontSize: 12 }}>
+                  No archived reviews yet. Complete your 5 steps and click Start New Review to archive.
+                </div>
+              )}
             </div>
           </div>
         </div>

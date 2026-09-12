@@ -187,6 +187,96 @@ end tell`;
     return;
   }
 
+  // ── Live projects and notes fetch endpoint ─────────────────────────────────
+  if (req.method === "GET" && req.url === "/projects") {
+    console.log(`[${new Date().toLocaleTimeString()}] Fetching active projects and notes from OmniFocus...`);
+    const fetchProjsScript = `
+tell application "OmniFocus"
+  tell default document
+    set output to ""
+    set actProjs to every flattened project whose status is active status
+    repeat with p in actProjs
+      set pId to (id of p as string)
+      set pName to (name of p as string)
+      set pNote to (note of p as string)
+      set output to output & pId & "<OF_FIELD>" & pName & "<OF_FIELD>" & pNote & "<OF_ROW>"
+    end repeat
+    return output
+  end tell
+end tell`;
+
+    try {
+      const raw = await runAppleScript(fetchProjsScript, 30000);
+      const rows = raw.split("<OF_ROW>").map(r => r.trim()).filter(Boolean);
+      const projects = rows.map(r => {
+        const [id, name, ...noteParts] = r.split("<OF_FIELD>");
+        return {
+          id: id ? id.trim() : "",
+          name: name ? name.trim() : "",
+          note: noteParts.join("<OF_FIELD>").trim()
+        };
+      });
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ success: true, projects }));
+    } catch (err) {
+      console.error(`[${new Date().toLocaleTimeString()}] ✗ Error fetching projects:`, err.message);
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  // ── Update project note endpoint ──────────────────────────────────────────
+  if (req.method === "POST" && req.url === "/projects/note") {
+    let body = "";
+    req.on("data", chunk => body += chunk);
+    req.on("end", async () => {
+      try {
+        const { projectName, projectId, note } = JSON.parse(body || "{}");
+        if (!projectName && !projectId) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Project name or ID required" }));
+          return;
+        }
+
+        const safeNote = (note || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+        let findClause = "";
+        if (projectId) {
+          const safeId = projectId.replace(/["\\]/g, "");
+          findClause = `whose id is "${safeId}"`;
+        } else {
+          const safeName = projectName.replace(/["\\]/g, "");
+          findClause = `whose name is "${safeName}"`;
+        }
+
+        const script = `tell application "OmniFocus"
+  tell default document
+    try
+      set p to (first flattened project ${findClause})
+      set note of p to "${safeNote}"
+      return "ok"
+    on error errMsg
+      return "error: " & errMsg
+    end try
+  end tell
+end tell`;
+
+        const result = await runAppleScript(script);
+        if (result && result.startsWith("error:")) {
+          throw new Error(result);
+        }
+
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: true, projectName }));
+      } catch (err) {
+        console.error(`[${new Date().toLocaleTimeString()}] ✗ Error updating project note:`, err.message);
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
   // Sync endpoint
   if (req.method === "POST" && req.url === "/sync") {
     let body = "";

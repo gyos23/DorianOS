@@ -7,6 +7,8 @@ export default function PrioritiesTab({
   priorities,
   setPriorities,
   ofTasks = [],
+  fetchOFProjects,
+  updateProjectNote,
   completeTask,
   toggleFlag,
   t,
@@ -15,6 +17,7 @@ export default function PrioritiesTab({
   const [selectedStatus, setSelectedStatus] = useState("active");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPriority, setEditingPriority] = useState(null);
+  const [syncStatus, setSyncStatus] = useState(null);
 
   const projectList = useMemo(() => {
     return Array.from(new Set(ofTasks.map((t) => t.project).filter(Boolean)));
@@ -35,7 +38,67 @@ export default function PrioritiesTab({
     return { active, paused, completed, total: priorities.length };
   }, [priorities]);
 
-  const handleSavePriority = (saved) => {
+  const syncNotesFromOF = async () => {
+    if (!fetchOFProjects) return;
+    setSyncStatus("Syncing…");
+    try {
+      const ofProjs = await fetchOFProjects();
+      if (!ofProjs || ofProjs.length === 0) {
+        setSyncStatus("No OF projects");
+        setTimeout(() => setSyncStatus(null), 3000);
+        return;
+      }
+
+      let updatedCount = 0;
+      setPriorities((prev) =>
+        prev.map((priority) => {
+          if (!priority.ofProject) return priority;
+          const targetName = priority.ofProject.toLowerCase().trim();
+          const match = ofProjs.find((p) => {
+            const pName = (p.name || "").toLowerCase().trim();
+            return pName === targetName || pName.includes(targetName) || targetName.includes(pName);
+          });
+
+          if (!match || !match.note) return priority;
+
+          const noteText = match.note;
+          const parseField = (regex) => {
+            const m = noteText.match(regex);
+            return m ? m[1].trim() : null;
+          };
+
+          const specific = parseField(/(?:Specific|specific):\s*([^\n\r]+)/i);
+          const measurable = parseField(/(?:Measurable|measurable):\s*([^\n\r]+)/i);
+          const achievable = parseField(/(?:Achievable|achievable):\s*([^\n\r]+)/i);
+          const relevant = parseField(/(?:Relevant|relevant):\s*([^\n\r]+)/i);
+          const timeBound = parseField(/(?:Time-Bound|Time-bound|timebound|time-bound):\s*([^\n\r]+)/i);
+
+          const newSmart = { ...(priority.smart || {}) };
+          if (specific) newSmart.specific = specific;
+          if (measurable) newSmart.measurable = measurable;
+          if (achievable) newSmart.achievable = achievable;
+          if (relevant) newSmart.relevant = relevant;
+          if (timeBound) newSmart.timeBound = timeBound;
+
+          updatedCount++;
+          return {
+            ...priority,
+            notes: noteText,
+            smart: newSmart,
+          };
+        })
+      );
+
+      setSyncStatus(`✓ Synced ${updatedCount} note(s)!`);
+      setTimeout(() => setSyncStatus(null), 4000);
+    } catch (err) {
+      console.error("Sync notes failed:", err);
+      setSyncStatus("Sync error");
+      setTimeout(() => setSyncStatus(null), 3000);
+    }
+  };
+
+  const handleSavePriority = async (saved) => {
     setPriorities((prev) => {
       const idx = prev.findIndex((p) => p.id === saved.id);
       if (idx >= 0) {
@@ -45,6 +108,23 @@ export default function PrioritiesTab({
       }
       return [saved, ...prev];
     });
+
+    // Write back to OmniFocus if toggled
+    if (saved.updateInOmniFocus && saved.ofProject && updateProjectNote) {
+      const smart = saved.smart || {};
+      const noteParts = [
+        smart.specific ? `Specific: ${smart.specific}` : "",
+        smart.measurable ? `Measurable: ${smart.measurable}` : "",
+        smart.achievable ? `Achievable: ${smart.achievable}` : "",
+        smart.relevant ? `Relevant: ${smart.relevant}` : "",
+        smart.timeBound ? `Time-Bound: ${smart.timeBound}` : "",
+        saved.notes && !saved.notes.includes("Specific:") ? `\n${saved.notes}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      await updateProjectNote(saved.ofProject, noteParts);
+    }
   };
 
   const handleUpdatePriority = (updated) => {
@@ -106,9 +186,20 @@ export default function PrioritiesTab({
           </div>
         </div>
 
-        <button className="btn active" onClick={handleOpenNew} style={{ fontSize: 12, padding: "6px 14px" }}>
-          + New Priority
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button
+            className="btn"
+            onClick={syncNotesFromOF}
+            disabled={syncStatus === "Syncing…"}
+            style={{ fontSize: 12, padding: "6px 12px", display: "flex", alignItems: "center", gap: 4 }}
+          >
+            <span>↻</span>
+            <span>{syncStatus || "Sync Notes from OmniFocus"}</span>
+          </button>
+          <button className="btn active" onClick={handleOpenNew} style={{ fontSize: 12, padding: "6px 14px" }}>
+            + New Priority
+          </button>
+        </div>
       </div>
 
       {/* KPI Stat Cards */}

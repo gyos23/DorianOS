@@ -73,6 +73,8 @@ export default function App() {
     refreshStatus,
     setRefreshStatus,
     fetchOFTasks,
+    fetchOFProjects,
+    updateProjectNote,
     completeTask,
     toggleFlag,
     createTask,
@@ -393,6 +395,8 @@ export default function App() {
               priorities={priorities}
               setPriorities={setPriorities}
               ofTasks={ofTasks}
+              fetchOFProjects={fetchOFProjects}
+              updateProjectNote={updateProjectNote}
               completeTask={completeTask}
               toggleFlag={toggleFlag}
               t={t}

@@ -118,12 +118,46 @@ export function useOmniFocus(bridgeStatus) {
     [setOfTasks]
   );
 
+  const fetchOFProjects = useCallback(async () => {
+    try {
+      const bridgeUrl = getBridgeUrl();
+      const r = await fetch(`${bridgeUrl}/projects`, { signal: AbortSignal.timeout(30000) });
+      const data = await r.json();
+      if (data.success && Array.isArray(data.projects)) {
+        return data.projects;
+      }
+      return [];
+    } catch (err) {
+      console.error("Fetch OF projects error:", err.message);
+      return [];
+    }
+  }, []);
+
+  const updateProjectNote = useCallback(async (projectName, note) => {
+    try {
+      const bridgeUrl = getBridgeUrl();
+      const r = await fetch(`${bridgeUrl}/projects/note`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectName, note }),
+        signal: AbortSignal.timeout(20000),
+      });
+      const data = await r.json();
+      return !!(r.ok && data.success);
+    } catch (err) {
+      console.error("Update project note error:", err.message);
+      return false;
+    }
+  }, []);
+
   return {
     ofTasks,
     setOfTasks,
     refreshStatus,
     setRefreshStatus,
     fetchOFTasks,
+    fetchOFProjects,
+    updateProjectNote,
     completeTask,
     toggleFlag,
     createTask,
