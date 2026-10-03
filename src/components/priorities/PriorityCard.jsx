@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { PILLARS } from "../../data/priorities.js";
+import { PILLARS, getPillar } from "../../data/priorities.js";
 import { ofDueLabel } from "../../utils/dates.js";
 import { ofColor } from "../../data/tasks.js";
 import { fmt } from "../../utils/formatters.js";
@@ -12,12 +12,16 @@ export function PriorityCard({
   onDeletePriority,
   onCompleteTask,
   onToggleFlag,
+  onCreateTask,
+  pillars = PILLARS,
   t,
 }) {
   const [showSmart, setShowSmart] = useState(false);
+  const [showAllTasks, setShowAllTasks] = useState(false);
+  const [newTaskName, setNewTaskName] = useState("");
   const [completingIds, setCompletingIds] = useState(new Set());
 
-  const pillar = PILLARS[priority.pillar] || PILLARS.forward;
+  const pillar = getPillar(pillars, priority.pillar);
 
   // Filter linked OmniFocus tasks
   const linkedTasks = useMemo(() => {
@@ -287,7 +291,7 @@ export function PriorityCard({
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {linkedTasks.slice(0, 3).map((task) => {
+          {(showAllTasks ? linkedTasks : linkedTasks.slice(0, 3)).map((task) => {
             const due = ofDueLabel(task.dueDate);
             const dueColor = {
               overdue: t.danger,
@@ -395,10 +399,69 @@ export function PriorityCard({
           })}
 
           {linkedTasks.length === 0 && (
-            <div style={{ fontSize: 11, color: t.textDim, padding: "8px 0", fontStyle: "italic" }}>
-              No open tasks in OmniFocus project.
+            <div style={{ fontSize: 11, color: t.textDim, padding: "4px 0", fontStyle: "italic" }}>
+              No open tasks linked to this priority.
             </div>
           )}
+
+          {/* Show More / Show Less Toggle */}
+          {linkedTasks.length > 3 && (
+            <button
+              type="button"
+              onClick={() => setShowAllTasks(!showAllTasks)}
+              style={{
+                background: "none",
+                border: "none",
+                color: t.accent,
+                fontSize: 10,
+                fontWeight: 600,
+                cursor: "pointer",
+                textAlign: "left",
+                padding: "3px 0",
+              }}
+            >
+              {showAllTasks ? "▴ Show fewer tasks" : `▾ Show all ${linkedTasks.length} open tasks`}
+            </button>
+          )}
+
+          {/* Quick Add Open Task to Priority */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!newTaskName.trim()) return;
+              onCreateTask?.({
+                name: newTaskName.trim(),
+                project: priority.ofProject || `🎯 ${priority.title}`,
+                flagged: false,
+              });
+              setNewTaskName("");
+            }}
+            style={{ display: "flex", gap: 6, marginTop: 4 }}
+          >
+            <input
+              type="text"
+              placeholder="+ Add open task under this priority…"
+              value={newTaskName}
+              onChange={(e) => setNewTaskName(e.target.value)}
+              style={{
+                flex: 1,
+                padding: "5px 8px",
+                fontSize: 11,
+                background: t.surface2,
+                border: `1px solid ${t.border2}`,
+                borderRadius: 5,
+                color: t.text,
+              }}
+            />
+            <button
+              type="submit"
+              disabled={!newTaskName.trim()}
+              className="btn active"
+              style={{ fontSize: 11, padding: "4px 8px", flexShrink: 0 }}
+            >
+              + Add
+            </button>
+          </form>
         </div>
       </div>
 

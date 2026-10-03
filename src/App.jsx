@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef, Suspense, lazy } from "react";
 import { THEMES } from "./data/themes.js";
 import { INITIAL_DEBTS } from "./data/debts.js";
-import { INITIAL_PRIORITIES } from "./data/priorities.js";
+import { INITIAL_PRIORITIES, INITIAL_PILLARS } from "./data/priorities.js";
 import { LM_RECURRING, isDebtCharge } from "./data/cashflow.js";
 import { computeAmortization } from "./utils/amortization.js";
 import { dateKey, addDays, projectDates, buildDays } from "./utils/dates.js";
@@ -13,7 +13,7 @@ import { useOmniFocus } from "./hooks/useOmniFocus.js";
 
 // Lazy load tabs to code-split Recharts and heavy views
 const TodayTab = lazy(() => import("./components/today/TodayTab.jsx"));
-const WeeklyReviewTab = lazy(() => import("./components/review/WeeklyReviewTab.jsx"));
+const ReviewTab = lazy(() => import("./components/review/ReviewTab.jsx"));
 const PrioritiesTab = lazy(() => import("./components/priorities/PrioritiesTab.jsx"));
 const DebtPayoffTab = lazy(() => import("./components/payoff/DebtPayoffTab.jsx"));
 const CashFlowTab = lazy(() => import("./components/cashflow/CashFlowTab.jsx"));
@@ -33,6 +33,7 @@ export default function App() {
   useEffect(() => {
     setVisitedSections((prev) => (prev.has(section) ? prev : new Set(prev).add(section)));
   }, [section]);
+  const [pillars, setPillars] = usePersistentState("pillars", INITIAL_PILLARS);
   const [priorities, setPriorities] = usePersistentState("priorities.list", INITIAL_PRIORITIES);
   const [debts, setDebts] = usePersistentState("debts", INITIAL_DEBTS);
   const [strategy, setStrategy] = usePersistentState("strategy", "avalanche");
@@ -59,7 +60,22 @@ export default function App() {
   }, []);
 
   const [debtSyncStatus, setDebtSyncStatus] = useStatusTimer();
+  const [runwayBasis, setRunwayBasis] = usePersistentState("runwayBasis", "checking");
+  const [checkingBal, setCheckingBal] = usePersistentState("checkingBal", 4952);
+  const [totalCashBal, setTotalCashBal] = usePersistentState("totalCashBal", 12450);
   const [startBal, setStartBal] = usePersistentState("startBal", 4952);
+
+  const handleSetRunwayBasis = useCallback(
+    (newBasis) => {
+      setRunwayBasis(newBasis);
+      if (newBasis === "total") {
+        setStartBal(totalCashBal);
+      } else {
+        setStartBal(checkingBal);
+      }
+    },
+    [setRunwayBasis, setStartBal, totalCashBal, checkingBal]
+  );
   const [cfBudget, setCfBudget] = usePersistentState("cfBudget", 6500);
   const [lmData, setLmData] = usePersistentState("lmData", LM_RECURRING);
   const [lmSyncStatus, setLmSyncStatus] = useStatusTimer();
@@ -144,15 +160,40 @@ export default function App() {
         });
       });
 
-      const wise = (accData.plaid_accounts ?? []).find((a) => a.id === 350134);
-      if (wise) setStartBal(parseFloat(wise.balance));
+      const plaidAccs = accData.plaid_accounts ?? [];
+      const wise = plaidAccs.find((a) => a.id === 350134);
+      const depositories = plaidAccs.filter((a) => a.type === "depository" || a.subtype === "checking");
+      const checkings = depositories.filter((a) =>
+        (a.subtype === "checking" || (a.name || "").toLowerCase().includes("checking") || a.id === 350134)
+      );
+
+      const checkingTotal = checkings.length > 0
+        ? checkings.reduce((sum, a) => sum + parseFloat(a.balance || 0), 0)
+        : wise ? parseFloat(wise.balance) : checkingBal;
+
+      const assets = assetData.assets ?? [];
+      const liquidAssets = assets.filter((a) =>
+        ["cash", "checking", "savings"].includes(a.type_name) && !a.closed_on
+      );
+
+      const totalLiquid = [
+        ...depositories.map((a) => parseFloat(a.balance || 0)),
+        ...liquidAssets.map((a) => parseFloat(a.balance || 0)),
+      ].reduce((sum, b) => sum + b, 0);
+
+      const finalChecking = checkingTotal > 0 ? checkingTotal : (wise ? parseFloat(wise.balance) : checkingBal);
+      const finalTotal = totalLiquid > 0 ? totalLiquid : finalChecking * 2.5;
+
+      setCheckingBal(finalChecking);
+      setTotalCashBal(finalTotal);
+      setStartBal(runwayBasis === "total" ? finalTotal : finalChecking);
 
       setDebtSyncStatus("done");
     } catch (err) {
       console.error("Debt sync failed:", err.message);
       setDebtSyncStatus("error");
     }
-  }, [setDebtSyncStatus]);
+  }, [setDebtSyncStatus, checkingBal, runwayBasis, setCheckingBal, setTotalCashBal, setStartBal]);
 
   const syncLM = useCallback(
     async (numDays = 60) => {
@@ -334,6 +375,8 @@ export default function App() {
         payoffDate={payoffDate}
         stalled={stalled}
         todayEOD={todayEOD}
+        runwayBasis={runwayBasis}
+        setRunwayBasis={handleSetRunwayBasis}
         themeName={themeName}
         setThemeName={setThemeName}
         t={t}
@@ -350,6 +393,10 @@ export default function App() {
               bridgeStatus={bridgeStatus}
               checkBridge={checkBridge}
               startBal={startBal}
+              checkingBal={checkingBal}
+              totalCashBal={totalCashBal}
+              runwayBasis={runwayBasis}
+              setRunwayBasis={handleSetRunwayBasis}
               forecasts={forecasts}
               cashZeroDate={cashZeroDate}
               lmData={lmData}
@@ -361,6 +408,7 @@ export default function App() {
               lmSyncStatus={lmSyncStatus}
               debtSyncStatus={debtSyncStatus}
               priorities={priorities}
+              pillars={pillars}
               onNavigate={setSection}
               t={t}
             />
@@ -369,13 +417,20 @@ export default function App() {
 
         {visitedSections.has("review") && (
           <div style={{ display: section === "review" ? "contents" : "none" }}>
-            <WeeklyReviewTab
+            <ReviewTab
               ofTasks={ofTasks}
               completeTask={completeTask}
               toggleFlag={toggleFlag}
+              onCreateTask={createTask}
               priorities={priorities}
               setPriorities={setPriorities}
+              pillars={pillars}
+              setPillars={setPillars}
               startBal={startBal}
+              checkingBal={checkingBal}
+              totalCashBal={totalCashBal}
+              runwayBasis={runwayBasis}
+              setRunwayBasis={handleSetRunwayBasis}
               debts={debts}
               strategy={strategy}
               extraPayment={extraPayment}
@@ -383,6 +438,8 @@ export default function App() {
               payoffDate={payoffDate}
               forecasts={forecasts}
               cashZeroDate={cashZeroDate}
+              lmData={lmData}
+              cfBudget={cfBudget}
               onNavigate={setSection}
               t={t}
             />
@@ -399,6 +456,9 @@ export default function App() {
               updateProjectNote={updateProjectNote}
               completeTask={completeTask}
               toggleFlag={toggleFlag}
+              onCreateTask={createTask}
+              pillars={pillars}
+              setPillars={setPillars}
               t={t}
             />
           </div>
@@ -445,6 +505,12 @@ export default function App() {
               setLmData={setLmData}
               lmSyncStatus={lmSyncStatus}
               syncLM={syncLM}
+              runwayBasis={runwayBasis}
+              setRunwayBasis={handleSetRunwayBasis}
+              checkingBal={checkingBal}
+              setCheckingBal={setCheckingBal}
+              totalCashBal={totalCashBal}
+              setTotalCashBal={setTotalCashBal}
               t={t}
             />
           </div>

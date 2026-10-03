@@ -1,4 +1,4 @@
-export const PILLARS = {
+export const INITIAL_PILLARS = {
   freedom: {
     id: "freedom",
     name: "Freedom",
@@ -40,6 +40,21 @@ export const PILLARS = {
     description: "Household, relationships, family security and presence",
   },
 };
+
+export const PILLARS = INITIAL_PILLARS;
+
+export function getPillar(pillars = {}, pillarId) {
+  if (pillars && pillars[pillarId]) return pillars[pillarId];
+  if (INITIAL_PILLARS[pillarId]) return INITIAL_PILLARS[pillarId];
+  return {
+    id: pillarId || "custom",
+    name: (pillarId || "Custom").charAt(0).toUpperCase() + (pillarId || "Custom").slice(1),
+    icon: "🎯",
+    color: "#64748B",
+    bg: "#64748B18",
+    description: "Custom Life Pillar",
+  };
+}
 
 export const INITIAL_PRIORITIES = [
   {

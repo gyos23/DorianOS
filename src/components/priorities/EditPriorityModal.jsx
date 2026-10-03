@@ -7,6 +7,7 @@ export function EditPriorityModal({
   onSave,
   priorityToEdit,
   projectList = [],
+  pillars = PILLARS,
   t,
 }) {
   const [updateInOmniFocus, setUpdateInOmniFocus] = useState(true);
@@ -193,7 +194,7 @@ export function EditPriorityModal({
                   marginTop: 4,
                 }}
               >
-                {Object.values(PILLARS).map((p) => (
+                {Object.values(pillars || PILLARS).map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.icon} {p.name}
                   </option>

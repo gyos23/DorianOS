@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { fmt } from "../../utils/formatters.js";
 import { dateKey } from "../../utils/dates.js";
-import { PILLARS } from "../../data/priorities.js";
+import { PILLARS, getPillar } from "../../data/priorities.js";
 import { TodayFocusMatrix } from "./TodayFocusMatrix.jsx";
 import { RunwayRadar } from "./RunwayRadar.jsx";
 
@@ -24,6 +24,11 @@ export default function TodayTab({
   lmSyncStatus,
   debtSyncStatus,
   priorities = [],
+  pillars = PILLARS,
+  runwayBasis = "checking",
+  setRunwayBasis,
+  checkingBal,
+  totalCashBal,
   onNavigate,
   t,
 }) {
@@ -376,7 +381,7 @@ export default function TodayTab({
             }}
           >
             {activePriorities.map((p) => {
-              const pillar = PILLARS[p.pillar] || PILLARS.forward;
+              const pillar = getPillar(pillars, p.pillar);
               const pct =
                 p.targetValue > 0
                   ? Math.min(100, Math.round((p.currentValue / p.targetValue) * 100))
@@ -464,6 +469,10 @@ export default function TodayTab({
             forecasts={forecasts}
             cashZeroDate={cashZeroDate}
             lmData={lmData}
+            runwayBasis={runwayBasis}
+            setRunwayBasis={setRunwayBasis}
+            checkingBal={checkingBal}
+            totalCashBal={totalCashBal}
             onNavigateCashflow={() => onNavigate("cashflow")}
             t={t}
           />

@@ -24,6 +24,12 @@ export default function CashFlowTab({
   setLmData,
   lmSyncStatus,
   syncLM,
+  runwayBasis = "checking",
+  setRunwayBasis,
+  checkingBal,
+  setCheckingBal,
+  totalCashBal,
+  setTotalCashBal,
   t,
 }) {
   const [numDays, setNumDays] = useState(60);
@@ -257,23 +263,46 @@ export default function CashFlowTab({
             marginBottom: 12,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span
-              style={{
-                fontSize: 10,
-                color: t.textDim,
-                textTransform: "uppercase",
-                letterSpacing: ".1em",
-                fontWeight: 500,
-              }}
-            >
-              Start
+          {/* Runway Basis Switcher & Balance Inputs */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, background: t.surface2, padding: "2px 6px", borderRadius: 8, border: `1px solid ${t.border2}` }}>
+            <span style={{ fontSize: 9, color: t.textDim, textTransform: "uppercase", fontWeight: 700 }}>
+              Runway:
             </span>
+            <button
+              type="button"
+              className={`btn ${runwayBasis === "checking" ? "active" : ""}`}
+              onClick={() => {
+                setRunwayBasis?.("checking");
+                if (checkingBal != null) setStartBal(checkingBal);
+              }}
+              style={{ fontSize: 10, padding: "2px 8px", border: "none" }}
+              title="Drive cash flow and runway using income/cash available in checking accounts"
+            >
+              Checking
+            </button>
+            <button
+              type="button"
+              className={`btn ${runwayBasis === "total" ? "active" : ""}`}
+              onClick={() => {
+                setRunwayBasis?.("total");
+                if (totalCashBal != null) setStartBal(totalCashBal);
+              }}
+              style={{ fontSize: 10, padding: "2px 8px", border: "none" }}
+              title="Drive cash flow and runway using total liquid cash across all accounts"
+            >
+              Total Available
+            </button>
             <input
               type="number"
               value={startBal}
-              onChange={(e) => setStartBal(+e.target.value)}
-              style={{ width: 96 }}
+              onChange={(e) => {
+                const val = +e.target.value;
+                setStartBal(val);
+                if (runwayBasis === "checking") setCheckingBal?.(val);
+                else setTotalCashBal?.(val);
+              }}
+              style={{ width: 88, padding: "2px 6px", fontSize: 12, marginLeft: 4 }}
+              title="Active starting cash balance informing runway"
             />
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

@@ -9,6 +9,10 @@ export function RunwayRadar({
   cashZeroDate,
   lmData,
   onNavigateCashflow,
+  runwayBasis = "checking",
+  setRunwayBasis,
+  checkingBal,
+  totalCashBal,
   t,
 }) {
   const today = new Date();
@@ -65,7 +69,7 @@ export function RunwayRadar({
         padding: 20,
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 16 }}>⏱️</span>
           <span
@@ -80,6 +84,32 @@ export function RunwayRadar({
             Cash Runway & 7-Day Liquidity
           </span>
         </div>
+
+        {/* Runway Basis Selector Toggle */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, background: t.surface2, padding: "2px 4px", borderRadius: 8, border: `1px solid ${t.border2}` }}>
+          <span style={{ fontSize: 9, color: t.textDim, textTransform: "uppercase", fontWeight: 700, paddingLeft: 4 }}>
+            Basis:
+          </span>
+          <button
+            type="button"
+            className={`btn ${runwayBasis === "checking" ? "active" : ""}`}
+            onClick={() => setRunwayBasis?.("checking")}
+            title="Runway calculated using income available in checking (Wise/checking liquid pool)"
+            style={{ fontSize: 10, padding: "2px 7px", border: "none" }}
+          >
+            Checking ({fmt(checkingBal ?? startBal)})
+          </button>
+          <button
+            type="button"
+            className={`btn ${runwayBasis === "total" ? "active" : ""}`}
+            onClick={() => setRunwayBasis?.("total")}
+            title="Runway calculated using total liquid cash available across all checking, savings & cash assets"
+            style={{ fontSize: 10, padding: "2px 7px", border: "none" }}
+          >
+            Total Available ({fmt(totalCashBal ?? (startBal * 2.5))})
+          </button>
+        </div>
+
         <button
           className="btn"
           onClick={onNavigateCashflow}

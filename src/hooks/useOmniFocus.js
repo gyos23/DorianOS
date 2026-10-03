@@ -85,12 +85,12 @@ export function useOmniFocus(bridgeStatus) {
   );
 
   const createTask = useCallback(
-    async ({ name, dueDate, flagged }) => {
+    async ({ name, dueDate, flagged, project }) => {
       const tempId = "temp_" + Date.now();
       const newTask = {
         id: tempId,
         name,
-        project: "📥 Inbox",
+        project: project || "📥 Inbox",
         dueDate: dueDate || null,
         flagged: !!flagged,
       };
@@ -100,7 +100,7 @@ export function useOmniFocus(bridgeStatus) {
         const r = await fetch(`${bridgeUrl}/tasks/create`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, dueDate, flagged }),
+          body: JSON.stringify({ name, dueDate, flagged, project: project || "📥 Inbox" }),
           signal: AbortSignal.timeout(20000),
         });
         const data = await r.json();

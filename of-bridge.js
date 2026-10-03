@@ -358,7 +358,7 @@ end tell`;
     req.on("data", chunk => body += chunk);
     req.on("end", async () => {
       try {
-        const { name, dueDate, flagged } = JSON.parse(body || "{}");
+        const { name, dueDate, flagged, project } = JSON.parse(body || "{}");
         if (!name || !name.trim()) {
           res.writeHead(400, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ error: "Task name required" }));
@@ -374,21 +374,39 @@ end tell`;
           }
         }
         const flagProp = flagged ? ", flagged:true" : "";
-        const script = `tell application "OmniFocus"
+        const targetProject = project && project !== "📥 Inbox" ? project.replace(/["\\]/g, "\\$&") : null;
+
+        let script;
+        if (targetProject) {
+          script = `tell application "OmniFocus"
+  tell default document
+    try
+      set p to (first flattened project whose name is "${targetProject}")
+      set newTask to make new task with properties {name:"${safeName}"${flagProp}${dateProp}} at end of tasks of p
+      return id of newTask
+    on error
+      set newTask to make new inbox task with properties {name:"${safeName}"${flagProp}${dateProp}}
+      return id of newTask
+    end try
+  end tell
+end tell`;
+        } else {
+          script = `tell application "OmniFocus"
   tell default document
     set newTask to make new inbox task with properties {name:"${safeName}"${flagProp}${dateProp}}
     return id of newTask
   end tell
 end tell`;
+        }
         const newId = await runAppleScript(script);
-        console.log(`[${new Date().toLocaleTimeString()}] ✓ Created inbox task "${name}" (${newId})`);
+        console.log(`[${new Date().toLocaleTimeString()}] ✓ Created task "${name}" in ${project || "Inbox"} (${newId})`);
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({
           success: true,
           task: {
             id: newId,
             name: name.trim(),
-            project: "📥 Inbox",
+            project: project || "📥 Inbox",
             dueDate: dueDate || null,
             flagged: !!flagged
           }

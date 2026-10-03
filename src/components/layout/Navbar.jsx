@@ -19,6 +19,8 @@ export function Navbar({
   payoffDate,
   stalled,
   todayEOD,
+  runwayBasis = "checking",
+  setRunwayBasis,
   themeName,
   setThemeName,
   t,
@@ -77,9 +79,25 @@ export function Navbar({
               : "30+ yrs",
             color: t.accent,
           },
-          { label: "Cash today", value: fmt(todayEOD), color: t.accentSub },
+          {
+            label: `Cash (${runwayBasis === "total" ? "Total" : "Checking"})`,
+            value: fmt(todayEOD),
+            color: t.accentSub,
+            clickable: true,
+            onClick: () => setRunwayBasis?.(runwayBasis === "total" ? "checking" : "total"),
+            title: `Click to toggle basis: currently ${runwayBasis === "total" ? "Total Available Cash" : "Checking Cash"}`,
+          },
         ].map((s) => (
-          <div key={s.label} style={{ textAlign: "right" }}>
+          <div
+            key={s.label}
+            onClick={s.onClick}
+            title={s.title}
+            style={{
+              textAlign: "right",
+              cursor: s.clickable ? "pointer" : "default",
+              userSelect: "none",
+            }}
+          >
             <div
               style={{
                 fontSize: 9,
