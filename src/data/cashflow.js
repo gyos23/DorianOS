@@ -1,4 +1,6 @@
-export const EUR = 1.182;
+import { DEFAULT_RATES } from "../utils/currency.js";
+
+export const EUR = DEFAULT_RATES.EUR || 1.08;
 
 export const CATEGORY_COLORS = {
   Debt: "#F87171",
