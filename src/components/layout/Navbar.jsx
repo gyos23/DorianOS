@@ -33,41 +33,66 @@ export function Navbar({
         alignItems: "center",
         height: 54,
         background: t.surface,
-        paddingRight: 16,
+        paddingRight: 14,
         position: "sticky",
         top: 0,
         zIndex: 50,
+        gap: 8,
+        minWidth: 0,
       }}
     >
       <div
         style={{
           fontFamily: "'Plus Jakarta Sans',sans-serif",
-          fontSize: 16,
+          fontSize: 15,
           fontWeight: 800,
           color: t.accent,
           letterSpacing: "-0.02em",
-          padding: "0 20px",
+          padding: "0 16px",
           borderRight: `1px solid ${t.border2}`,
           height: "100%",
           display: "flex",
           alignItems: "center",
           flexShrink: 0,
+          userSelect: "none",
         }}
       >
         DORIAN OS
       </div>
 
-      {NAV_ITEMS.map(([s, label]) => (
-        <button
-          key={s}
-          className={`nav-btn ${section === s ? "active" : ""}`}
-          onClick={() => setSection(s)}
-        >
-          {label}
-        </button>
-      ))}
+      {/* Nav items container */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          height: "100%",
+          overflowX: "auto",
+          scrollbarWidth: "none",
+          flexShrink: 1,
+          minWidth: 0,
+        }}
+      >
+        {NAV_ITEMS.map(([s, label]) => (
+          <button
+            key={s}
+            className={`nav-btn ${section === s ? "active" : ""}`}
+            onClick={() => setSection(s)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
-      <div style={{ marginLeft: "auto", display: "flex", gap: 18, alignItems: "center" }}>
+      {/* Metrics & Theme Controls */}
+      <div
+        style={{
+          marginLeft: "auto",
+          display: "flex",
+          gap: 12,
+          alignItems: "center",
+          flexShrink: 0,
+        }}
+      >
         {[
           { label: "Debt/mo", value: fmt(debtMonthly), color: t.danger },
           {
@@ -80,18 +105,18 @@ export function Navbar({
             color: t.accent,
           },
           {
-            label: `Cash (${runwayBasis === "total" ? "Total" : "Checking"})`,
+            label: `Cash (${runwayBasis === "total" ? "Total" : "Check"})`,
             value: fmt(todayEOD),
             color: t.accentSub,
             clickable: true,
             onClick: () => setRunwayBasis?.(runwayBasis === "total" ? "checking" : "total"),
-            title: `Click to toggle basis: currently ${runwayBasis === "total" ? "Total Available Cash" : "Checking Cash"}`,
+            title: `Click to toggle basis: currently ${runwayBasis === "total" ? "Total Liquid Cash" : "Checking Cash"}`,
           },
           {
-            label: "FX / Rates",
+            label: "FX Rates",
             value: "€/£ → $",
             color: t.textDim,
-            title: "Multi-currency accounts (Wise EUR, Irish accounts, etc.) automatically converted to USD runway",
+            title: "Multi-currency accounts (Wise EUR, Irish accounts, etc.) automatically normalized to USD runway",
           },
         ].map((s) => (
           <div
@@ -102,25 +127,30 @@ export function Navbar({
               textAlign: "right",
               cursor: s.clickable ? "pointer" : "default",
               userSelect: "none",
+              whiteSpace: "nowrap",
+              lineHeight: 1.2,
             }}
           >
             <div
               style={{
-                fontSize: 9,
+                fontSize: 8.5,
                 color: t.textDim,
                 textTransform: "uppercase",
-                letterSpacing: ".1em",
-                marginBottom: 1,
+                letterSpacing: ".08em",
+                marginBottom: 2,
+                whiteSpace: "nowrap",
+                fontWeight: 600,
               }}
             >
               {s.label}
             </div>
             <div
               style={{
-                fontSize: 13,
-                fontWeight: 600,
+                fontSize: 12,
+                fontWeight: 700,
                 color: s.color,
                 fontVariantNumeric: "tabular-nums",
+                whiteSpace: "nowrap",
               }}
             >
               {s.value}
@@ -133,9 +163,10 @@ export function Navbar({
           style={{
             display: "flex",
             gap: 4,
-            paddingLeft: 14,
+            paddingLeft: 10,
             borderLeft: `1px solid ${t.border2}`,
-            marginLeft: 4,
+            marginLeft: 2,
+            flexShrink: 0,
           }}
         >
           {Object.entries(THEMES).map(([key, th]) => (
@@ -143,9 +174,10 @@ export function Navbar({
               key={key}
               className={`theme-pill ${themeName === key ? "active" : ""}`}
               onClick={() => setThemeName(key)}
+              style={{ padding: "4px 8px", fontSize: 11 }}
             >
               <span>{th.icon}</span>
-              <span style={{ fontSize: 10 }}>{th.label}</span>
+              <span style={{ fontSize: 9.5 }}>{th.label}</span>
             </button>
           ))}
         </div>
@@ -153,3 +185,4 @@ export function Navbar({
     </div>
   );
 }
+
