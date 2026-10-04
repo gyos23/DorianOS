@@ -4,7 +4,7 @@ import { ofColor } from "../../data/tasks.js";
 import { QuickCaptureBar } from "../tasks/QuickCaptureBar.jsx";
 
 export function TodayFocusMatrix({
-  ofTasks,
+  ofTasks = [],
   onCompleteTask,
   onToggleFlag,
   onCreateTask,

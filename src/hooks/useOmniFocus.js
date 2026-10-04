@@ -28,6 +28,24 @@ export function useOmniFocus(bridgeStatus) {
     }
   }, [setRefreshStatus, setOfTasks]);
 
+  const [ofProjects, setOfProjects] = usePersistentState("tasks.ofProjects", []);
+
+  const fetchOFProjects = useCallback(async () => {
+    try {
+      const bridgeUrl = getBridgeUrl();
+      const r = await fetch(`${bridgeUrl}/projects`, { signal: AbortSignal.timeout(45000) });
+      const data = await r.json();
+      if (data.success && Array.isArray(data.projects)) {
+        setOfProjects(data.projects);
+        return data.projects;
+      }
+      return [];
+    } catch (err) {
+      console.error("Fetch OF projects error:", err.message);
+      return [];
+    }
+  }, [setOfProjects]);
+
   // Auto-fetch on connect
   useEffect(() => {
     if (bridgeStatus === "online" && !hasAutoFetched.current) {
@@ -119,23 +137,6 @@ export function useOmniFocus(bridgeStatus) {
     [setOfTasks]
   );
 
-  const [ofProjects, setOfProjects] = usePersistentState("tasks.ofProjects", []);
-
-  const fetchOFProjects = useCallback(async () => {
-    try {
-      const bridgeUrl = getBridgeUrl();
-      const r = await fetch(`${bridgeUrl}/projects`, { signal: AbortSignal.timeout(45000) });
-      const data = await r.json();
-      if (data.success && Array.isArray(data.projects)) {
-        setOfProjects(data.projects);
-        return data.projects;
-      }
-      return [];
-    } catch (err) {
-      console.error("Fetch OF projects error:", err.message);
-      return [];
-    }
-  }, [setOfProjects]);
 
   const updateProjectNote = useCallback(async (projectName, note) => {
     try {

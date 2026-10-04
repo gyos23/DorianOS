@@ -7,7 +7,7 @@ export function RunwayRadar({
   startBal,
   forecasts,
   cashZeroDate,
-  lmData,
+  lmData = [],
   onNavigateCashflow,
   runwayBasis = "checking",
   setRunwayBasis,

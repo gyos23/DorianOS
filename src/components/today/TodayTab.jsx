@@ -6,7 +6,7 @@ import { TodayFocusMatrix } from "./TodayFocusMatrix.jsx";
 import { RunwayRadar } from "./RunwayRadar.jsx";
 
 export default function TodayTab({
-  ofTasks,
+  ofTasks = [],
   onCompleteTask,
   onToggleFlag,
   onCreateTask,
@@ -15,7 +15,7 @@ export default function TodayTab({
   startBal,
   forecasts,
   cashZeroDate,
-  lmData,
+  lmData = [],
   totalDebt,
   debtMonthly,
   payoffDate,

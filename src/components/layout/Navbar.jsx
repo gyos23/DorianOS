@@ -97,11 +97,13 @@ export function Navbar({
           { label: "Debt/mo", value: fmt(debtMonthly), color: t.danger },
           {
             label: "Debt-free",
-            value: payoffDate
-              ? payoffDate.toLocaleDateString("en-US", { month: "short", year: "numeric" })
-              : stalled
-              ? "Never"
-              : "30+ yrs",
+            value: (() => {
+              const d = payoffDate instanceof Date ? payoffDate : (payoffDate ? new Date(payoffDate) : null);
+              if (d && !isNaN(d.getTime())) {
+                return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+              }
+              return stalled ? "Never" : "30+ yrs";
+            })(),
             color: t.accent,
           },
           {
