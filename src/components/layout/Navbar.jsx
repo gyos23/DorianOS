@@ -87,6 +87,12 @@ export function Navbar({
             onClick: () => setRunwayBasis?.(runwayBasis === "total" ? "checking" : "total"),
             title: `Click to toggle basis: currently ${runwayBasis === "total" ? "Total Available Cash" : "Checking Cash"}`,
           },
+          {
+            label: "FX / Rates",
+            value: "€/£ → $",
+            color: t.textDim,
+            title: "Multi-currency accounts (Wise EUR, Irish accounts, etc.) automatically converted to USD runway",
+          },
         ].map((s) => (
           <div
             key={s.label}

@@ -18,10 +18,30 @@ export function CalendarView({
   filterCat,
   setAddModal,
   removeCharge,
+  showTasks = true,
+  ofTasks = [],
+  onTaskDragStart,
+  onCompleteTask,
+  onToggleFlag,
+  onRescheduleTask,
   t,
 }) {
   const selCharges = selectedDay ? visForDay(selectedDay) : [];
   const selStats = selectedDay ? runBal[selectedDay] : null;
+
+  // Map tasks by due date (YYYY-MM-DD)
+  const tasksByDate = React.useMemo(() => {
+    const map = {};
+    for (const task of ofTasks) {
+      if (!task.dueDate) continue;
+      const k = task.dueDate.split("T")[0];
+      if (!map[k]) map[k] = [];
+      map[k].push(task);
+    }
+    return map;
+  }, [ofTasks]);
+
+  const selTasks = selectedDay ? (tasksByDate[selectedDay] || []) : [];
 
   // Group weeks by month key
   const groups = [];
@@ -136,7 +156,33 @@ export function CalendarView({
                               {d.getDate()}
                             </div>
                             <div style={{ overflow: "hidden", maxHeight: 58 }}>
-                              {vis.slice(0, 3).map((c) => (
+                              {showTasks && (tasksByDate[k] || []).slice(0, 2).map((task) => (
+                                <div
+                                  key={task.id}
+                                  className="chip"
+                                  style={{
+                                    background: "#3b82f622",
+                                    color: task.flagged ? "#f59e0b" : "#60a5fa",
+                                    border: `1px solid ${task.flagged ? "#f59e0b55" : "#3b82f644"}`,
+                                    fontSize: 9,
+                                    cursor: "grab",
+                                    whiteSpace: "nowrap",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                  }}
+                                  draggable
+                                  onDragStart={(e) => {
+                                    e.stopPropagation();
+                                    onTaskDragStart ? onTaskDragStart(e, task) : onDragStart(e, { ...task, _isTask: true });
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  title={`${task.name} (${task.project || "Inbox"})`}
+                                >
+                                  {task.flagged ? "★ " : "✓ "}
+                                  {task.name}
+                                </div>
+                              ))}
+                              {vis.slice(0, showTasks && (tasksByDate[k] || []).length > 0 ? 2 : 3).map((c) => (
                                 <div
                                   key={c.id}
                                   className="chip"
@@ -160,9 +206,9 @@ export function CalendarView({
                                   {c._isDebtPayment ? "⚡" : ""}
                                 </div>
                               ))}
-                              {vis.length > 3 && (
+                              {(vis.length + (showTasks ? (tasksByDate[k] || []).length : 0)) > 3 && (
                                 <div style={{ fontSize: 9, color: t.textDim, marginTop: 1 }}>
-                                  +{vis.length - 3} more
+                                  +{(vis.length + (showTasks ? (tasksByDate[k] || []).length : 0)) - 3} more
                                 </div>
                               )}
                             </div>
@@ -211,6 +257,10 @@ export function CalendarView({
         selCharges={selCharges}
         setAddModal={setAddModal}
         removeCharge={removeCharge}
+        dayTasks={selTasks}
+        onCompleteTask={onCompleteTask}
+        onToggleFlag={onToggleFlag}
+        onRescheduleTask={onRescheduleTask}
         t={t}
       />
     </div>

@@ -10,6 +10,7 @@ import { usePersistentState } from "./hooks/usePersistentState.js";
 import { getBridgeUrl } from "./utils/config.js";
 import { Navbar } from "./components/layout/Navbar.jsx";
 import { useOmniFocus } from "./hooks/useOmniFocus.js";
+import { getExchangeRates, convertToUSD } from "./utils/currency.js";
 
 // Lazy load tabs to code-split Recharts and heavy views
 const TodayTab = lazy(() => import("./components/today/TodayTab.jsx"));
@@ -94,6 +95,7 @@ export default function App() {
     completeTask,
     toggleFlag,
     createTask,
+    updateTaskDueDate,
   } = useOmniFocus(bridgeStatus);
 
   const checkBridge = useCallback(async () => {
@@ -119,13 +121,21 @@ export default function App() {
       ]);
       const [accData, assetData] = await Promise.all([accRes.json(), assetRes.json()]);
 
+      const rates = await getExchangeRates();
+
       const credits = [
         ...(accData.plaid_accounts ?? []).filter(
           (a) => a.type === "credit" && parseFloat(a.balance) > 0
-        ),
+        ).map((a) => ({
+          ...a,
+          balance: convertToUSD(a.balance, a.currency || "USD", rates),
+        })),
         ...(assetData.assets ?? []).filter(
           (a) => ["credit", "loan"].includes(a.type_name) && parseFloat(a.balance) > 0 && !a.closed_on
-        ),
+        ).map((a) => ({
+          ...a,
+          balance: convertToUSD(a.balance, a.currency || "USD", rates),
+        })),
       ];
 
       setDebts((prev) => {
@@ -168,8 +178,8 @@ export default function App() {
       );
 
       const checkingTotal = checkings.length > 0
-        ? checkings.reduce((sum, a) => sum + parseFloat(a.balance || 0), 0)
-        : wise ? parseFloat(wise.balance) : checkingBal;
+        ? checkings.reduce((sum, a) => sum + convertToUSD(a.balance || 0, a.currency || "USD", rates), 0)
+        : wise ? convertToUSD(wise.balance, wise.currency || "EUR", rates) : checkingBal;
 
       const assets = assetData.assets ?? [];
       const liquidAssets = assets.filter((a) =>
@@ -177,11 +187,11 @@ export default function App() {
       );
 
       const totalLiquid = [
-        ...depositories.map((a) => parseFloat(a.balance || 0)),
-        ...liquidAssets.map((a) => parseFloat(a.balance || 0)),
+        ...depositories.map((a) => convertToUSD(a.balance || 0, a.currency || "USD", rates)),
+        ...liquidAssets.map((a) => convertToUSD(a.balance || 0, a.currency || "USD", rates)),
       ].reduce((sum, b) => sum + b, 0);
 
-      const finalChecking = checkingTotal > 0 ? checkingTotal : (wise ? parseFloat(wise.balance) : checkingBal);
+      const finalChecking = checkingTotal > 0 ? checkingTotal : (wise ? convertToUSD(wise.balance, wise.currency || "EUR", rates) : checkingBal);
       const finalTotal = totalLiquid > 0 ? totalLiquid : finalChecking * 2.5;
 
       setCheckingBal(finalChecking);
@@ -511,6 +521,10 @@ export default function App() {
               setCheckingBal={setCheckingBal}
               totalCashBal={totalCashBal}
               setTotalCashBal={setTotalCashBal}
+              ofTasks={ofTasks}
+              completeTask={completeTask}
+              toggleFlag={toggleFlag}
+              updateTaskDueDate={updateTaskDueDate}
               t={t}
             />
           </div>

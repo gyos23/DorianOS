@@ -653,12 +653,131 @@ Return JSON only, no markdown, no code fences:
         const claudeData = await claudeRes.json();
         if (!claudeRes.ok) throw new Error(claudeData.error?.message || "Claude API error");
 
-        const advice = JSON.parse(stripJsonFence(claudeData.content?.[0]?.text || "{}"));
+          const advice = JSON.parse(stripJsonFence(claudeData.content?.[0]?.text || "{}"));
         console.log(`[${new Date().toLocaleTimeString()}] ✓ Financial advice generated`);
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify(advice));
       } catch (err) {
         console.error(`[${new Date().toLocaleTimeString()}] ✗ Financial advice error:`, err.message);
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // ── Executive Weekly Digest endpoint ──────────────────────────────────────
+  if (req.method === "POST" && req.url === "/digest/weekly") {
+    let body = "";
+    req.on("data", chunk => body += chunk);
+    req.on("end", async () => {
+      try {
+        const {
+          ofTasks = [],
+          startBal = 0,
+          runwayBasis = "checking",
+          cfBudget = 6500,
+          debts = [],
+          debtMonthly = 0,
+          priorities = [],
+          weeklyNotes = {},
+        } = JSON.parse(body || "{}");
+
+        const apiKey = process.env.ANTHROPIC_API_KEY;
+
+        const totalDebt = debts.reduce((s, d) => s + (parseFloat(d.balance) || 0), 0);
+        const openTasksCount = ofTasks.length;
+        const dueSoonTasks = ofTasks.filter(t => t.dueDate).length;
+        const flaggedCount = ofTasks.filter(t => t.flagged).length;
+
+        // If no API key, provide high-fidelity algorithmic executive summary
+        if (!apiKey) {
+          console.log(`[${new Date().toLocaleTimeString()}] Generating rule-based Weekly Digest (no ANTHROPIC_API_KEY)`);
+          const fallbackDigest = {
+            executiveSummary: [
+              `Liquid runway is anchored on ${runwayBasis} balance at $${Math.round(startBal).toLocaleString()}, with $${Math.round(debtMonthly).toLocaleString()}/mo committed to debt payoff.`,
+              `Execution engine has ${openTasksCount} active tasks across your pillars (${flaggedCount} flagged, ${dueSoonTasks} scheduled with due dates).`,
+              `Monthly target budget cap is set at $${Math.round(cfBudget).toLocaleString()}, keeping debt elimination and venture execution aligned.`
+            ],
+            burnAudit: `Current liquid cash of $${Math.round(startBal).toLocaleString()} covers ~$${Math.round(debtMonthly).toLocaleString()} in debt velocity plus $${Math.round(cfBudget).toLocaleString()} in budget cap.`,
+            recommendedCommitments: [
+              {
+                pillar: "Career & Ventures",
+                commitment: priorities[0]?.name ? `Advance '${priorities[0].name}' key milestone` : "Execute high-leverage forward milestone"
+              },
+              {
+                pillar: "Financial Runway",
+                commitment: `Protect $${Math.round(startBal).toLocaleString()} liquid buffer & execute $${Math.round(debtMonthly).toLocaleString()} debt allocation`
+              },
+              {
+                pillar: "Operations & Health",
+                commitment: `Tackle ${flaggedCount} flagged tasks and maintain Sunday review cadence`
+              }
+            ],
+            source: "algorithmic-fallback"
+          };
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify(fallbackDigest));
+          return;
+        }
+
+        console.log(`[${new Date().toLocaleTimeString()}] Requesting Claude AI Weekly Executive Digest...`);
+        const prompt = `You are DorianOS Chief of Staff. Synthesize an executive weekly operational digest for a high-performing founder/engineer.
+
+Context:
+- Liquid Runway: $${Math.round(startBal)} (basis: ${runwayBasis})
+- Monthly Budget Target: $${Math.round(cfBudget)}
+- Total Debt: $${Math.round(totalDebt)} across ${debts.length} accounts, Monthly Debt Payoff: $${Math.round(debtMonthly)}
+- Active Tasks: ${openTasksCount} total (${flaggedCount} flagged, ${dueSoonTasks} with due dates)
+- Top 3 Priorities: ${priorities.slice(0, 3).map(p => p.name || p.title).join(", ") || "None set"}
+- User's Raw Review Notes:
+  - Top 1: ${weeklyNotes.topCommitment1 || "N/A"}
+  - Top 2: ${weeklyNotes.topCommitment2 || "N/A"}
+  - Top 3: ${weeklyNotes.topCommitment3 || "N/A"}
+  - Win: ${weeklyNotes.win || "N/A"}
+  - Blocker: ${weeklyNotes.blocker || "N/A"}
+
+Respond with a JSON object in this format:
+{
+  "executiveSummary": [
+    "Punchy bullet 1 summarizing state of financial runway and debt pace",
+    "Punchy bullet 2 summarizing task velocity and execution risks",
+    "Punchy bullet 3 summarizing the highest-leverage strategic lever"
+  ],
+  "burnAudit": "1-2 concise sentences analyzing burn, runway sustainability, and buffer health",
+  "recommendedCommitments": [
+    { "pillar": "Pillar Name", "commitment": "Concrete single-sentence commitment" },
+    { "pillar": "Pillar Name", "commitment": "Concrete single-sentence commitment" },
+    { "pillar": "Pillar Name", "commitment": "Concrete single-sentence commitment" }
+  ]
+}
+
+Return ONLY valid JSON. No conversational text or markdown code fences.`;
+
+        const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "claude-haiku-4-5-20251001",
+            max_tokens: 1200,
+            messages: [{ role: "user", content: prompt }],
+          }),
+        });
+
+        const claudeData = await claudeRes.json();
+        if (!claudeRes.ok) throw new Error(claudeData.error?.message || "Claude API error");
+
+        const digest = JSON.parse(stripJsonFence(claudeData.content?.[0]?.text || "{}"));
+        digest.source = "claude-haiku";
+        console.log(`[${new Date().toLocaleTimeString()}] ✓ Weekly Executive Digest generated`);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(digest));
+      } catch (err) {
+        console.error(`[${new Date().toLocaleTimeString()}] ✗ Weekly Digest error:`, err.message);
         res.writeHead(500, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ error: err.message }));
       }

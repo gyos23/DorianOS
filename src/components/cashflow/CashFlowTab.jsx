@@ -10,6 +10,8 @@ import { ListView } from "./ListView.jsx";
 import { AddChargeModal } from "./AddChargeModal.jsx";
 import { ScenarioSimulator } from "./ScenarioSimulator.jsx";
 import { MonthlyBudgetVisualizer } from "./MonthlyBudgetVisualizer.jsx";
+import { TaskScheduleDrawer } from "./TaskScheduleDrawer.jsx";
+import { SubscriptionLeakRadar } from "./SubscriptionLeakRadar.jsx";
 
 export default function CashFlowTab({
   startBal,
@@ -30,10 +32,16 @@ export default function CashFlowTab({
   setCheckingBal,
   totalCashBal,
   setTotalCashBal,
+  ofTasks = [],
+  completeTask,
+  toggleFlag,
+  updateTaskDueDate,
   t,
 }) {
   const [numDays, setNumDays] = useState(60);
   const [showLM, setShowLM] = useState(true);
+  const [showTasks, setShowTasks] = usePersistentState("cashflow.showTasks", true);
+  const [showTaskDrawer, setShowTaskDrawer] = useState(false);
   const [reconcileDebt, setReconcileDebt] = usePersistentState("cashflow.reconcileDebt", true);
   const [charges, setCharges] = useState([]);
   const [dragItem, setDragItem] = useState(null);
@@ -161,9 +169,19 @@ export default function CashFlowTab({
     [dayMap, hiddenLMIds]
   );
 
-  const onDragStart = useCallback((e, c) => {
-    setDragItem(c);
+  const onDragStart = useCallback((e, item) => {
+    setDragItem(item);
     e.dataTransfer.effectAllowed = "move";
+    if (item._isTask || item.project !== undefined) {
+      e.dataTransfer.setData("application/json", JSON.stringify(item));
+    }
+  }, []);
+
+  const onTaskDragStart = useCallback((e, task) => {
+    const taskItem = { ...task, _isTask: true };
+    setDragItem(taskItem);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("application/json", JSON.stringify(taskItem));
   }, []);
 
   const onDragOver = useCallback((e, k) => {
@@ -174,31 +192,76 @@ export default function CashFlowTab({
   const onDrop = useCallback(
     (e, targetDate) => {
       e.preventDefault();
-      if (!dragItem || dragItem.date === targetDate) {
+      let dropped = dragItem;
+      if (!dropped) {
+        try {
+          const raw = e.dataTransfer.getData("application/json");
+          if (raw) dropped = JSON.parse(raw);
+        } catch (_) {}
+      }
+
+      if (!dropped) {
         setDragItem(null);
         setDragOver(null);
         return;
       }
-      if (dragItem.source === "lunchmoney") {
+
+      // Check if dropped item is an OmniFocus task
+      if (dropped._isTask || (dropped.id && dropped.project !== undefined)) {
+        if (updateTaskDueDate) {
+          updateTaskDueDate(dropped.id, targetDate);
+        }
+        setDragItem(null);
+        setDragOver(null);
+        return;
+      }
+
+      if (dropped.date === targetDate) {
+        setDragItem(null);
+        setDragOver(null);
+        return;
+      }
+
+      if (dropped.source === "lunchmoney") {
         setCharges((p) => [
           ...p,
           {
-            ...dragItem,
+            ...dropped,
             id: uid(),
             date: targetDate,
             source: "manual-lm",
-            _originalId: dragItem.id,
+            _originalId: dropped.id,
           },
         ]);
-      } else if (dragItem.source !== "debt-calculator") {
+      } else if (dropped.source !== "debt-calculator") {
         setCharges((p) =>
-          p.map((c) => (c.id === dragItem.id ? { ...c, date: targetDate } : c))
+          p.map((c) => (c.id === dropped.id ? { ...c, date: targetDate } : c))
         );
       }
       setDragItem(null);
       setDragOver(null);
     },
-    [dragItem]
+    [dragItem, updateTaskDueDate]
+  );
+
+  const onDropUnschedule = useCallback(
+    (e) => {
+      e.preventDefault();
+      let dropped = dragItem;
+      if (!dropped) {
+        try {
+          const raw = e.dataTransfer.getData("application/json");
+          if (raw) dropped = JSON.parse(raw);
+        } catch (_) {}
+      }
+      if (dropped && (dropped._isTask || dropped.project !== undefined)) {
+        if (updateTaskDueDate) {
+          updateTaskDueDate(dropped.id, null);
+        }
+      }
+      setDragItem(null);
+    },
+    [dragItem, updateTaskDueDate]
   );
 
   const removeCharge = useCallback((id) => setCharges((p) => p.filter((c) => c.id !== id)), []);
@@ -405,11 +468,12 @@ export default function CashFlowTab({
           />
         </div>
 
-        <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: activeView === "budget" ? 0 : 10 }}>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: activeView === "budget" || activeView === "subs" ? 0 : 10, flexWrap: "wrap" }}>
           {[
             ["calendar", "📅 Calendar"],
             ["list", "📋 List"],
             ["budget", "⭕ Budget Circle"],
+            ["subs", "🔍 Subscription Radar"],
           ].map(([v, l]) => (
             <button
               key={v}
@@ -419,6 +483,33 @@ export default function CashFlowTab({
               {l}
             </button>
           ))}
+
+          {activeView === "calendar" && (
+            <>
+              <button
+                className={`btn ${showTasks ? "active" : ""}`}
+                onClick={() => setShowTasks((v) => !v)}
+                title="Toggle OmniFocus task chips visibility on calendar days"
+                style={{ fontSize: 11 }}
+              >
+                {showTasks ? "✓ " : ""}Tasks Overlay
+              </button>
+
+              <button
+                className={`btn ${showTaskDrawer ? "active" : ""}`}
+                onClick={() => setShowTaskDrawer((v) => !v)}
+                title="Open task scheduling drawer to align tasks with cashflow paydays"
+                style={{
+                  fontSize: 11,
+                  background: showTaskDrawer ? t.accent + "22" : undefined,
+                  borderColor: showTaskDrawer ? t.accent : undefined,
+                  color: showTaskDrawer ? t.accent : undefined,
+                }}
+              >
+                📋 Schedule Tasks Drawer
+              </button>
+            </>
+          )}
         </div>
 
         {activeView !== "budget" && (
@@ -535,6 +626,15 @@ export default function CashFlowTab({
         </div>
       )}
 
+      {activeView === "subs" && (
+        <div style={{ padding: "16px 20px 30px" }}>
+          <SubscriptionLeakRadar
+            lmData={lmData}
+            t={t}
+          />
+        </div>
+      )}
+
       {activeView === "list" && (
         <ListView
           days={days}
@@ -549,22 +649,42 @@ export default function CashFlowTab({
       )}
 
       {activeView === "calendar" && (
-        <CalendarView
-          weeks={weeks}
-          selectedDay={selectedDay}
-          setSelectedDay={setSelectedDay}
-          dragOver={dragOver}
-          setDragOver={setDragOver}
-          onDragOver={onDragOver}
-          onDrop={onDrop}
-          onDragStart={onDragStart}
-          visForDay={visForDay}
-          runBal={runBal}
-          filterCat={filterCat}
-          setAddModal={setAddModal}
-          removeCharge={removeCharge}
-          t={t}
-        />
+        <div style={{ display: "flex", overflow: "hidden", position: "relative" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <CalendarView
+              weeks={weeks}
+              selectedDay={selectedDay}
+              setSelectedDay={setSelectedDay}
+              dragOver={dragOver}
+              setDragOver={setDragOver}
+              onDragOver={onDragOver}
+              onDrop={onDrop}
+              onDragStart={onDragStart}
+              visForDay={visForDay}
+              runBal={runBal}
+              filterCat={filterCat}
+              setAddModal={setAddModal}
+              removeCharge={removeCharge}
+              showTasks={showTasks}
+              ofTasks={ofTasks}
+              onTaskDragStart={onTaskDragStart}
+              onCompleteTask={completeTask}
+              onToggleFlag={toggleFlag}
+              onRescheduleTask={updateTaskDueDate}
+              t={t}
+            />
+          </div>
+          <TaskScheduleDrawer
+            isOpen={showTaskDrawer}
+            onClose={() => setShowTaskDrawer(false)}
+            ofTasks={ofTasks}
+            onDragStart={onTaskDragStart}
+            onCompleteTask={completeTask}
+            onToggleFlag={toggleFlag}
+            onDropUnschedule={onDropUnschedule}
+            t={t}
+          />
+        </div>
       )}
 
       <AddChargeModal

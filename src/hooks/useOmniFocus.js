@@ -150,6 +150,33 @@ export function useOmniFocus(bridgeStatus) {
     }
   }, []);
 
+  const updateTaskDueDate = useCallback(
+    async (id, newDate) => {
+      setOfTasks((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, dueDate: newDate || null } : t))
+      );
+      try {
+        const bridgeUrl = getBridgeUrl();
+        const r = await fetch(`${bridgeUrl}/sync`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            changes: [{ id, newDate: newDate || null }],
+          }),
+          signal: AbortSignal.timeout(15000),
+        });
+        const data = await r.json();
+        if (!r.ok || !data.success) {
+          throw new Error(data.error || "Failed to update task due date");
+        }
+      } catch (err) {
+        console.error("Update task due date error:", err.message);
+        // We preserve local optimistic update or let next fetch sync
+      }
+    },
+    [setOfTasks]
+  );
+
   return {
     ofTasks,
     setOfTasks,
@@ -161,5 +188,6 @@ export function useOmniFocus(bridgeStatus) {
     completeTask,
     toggleFlag,
     createTask,
+    updateTaskDueDate,
   };
 }

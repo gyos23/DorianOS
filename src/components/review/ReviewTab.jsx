@@ -3,7 +3,9 @@ import { fmt } from "../../utils/formatters.js";
 import { PILLARS, getPillar } from "../../data/priorities.js";
 import { ofDueLabel } from "../../utils/dates.js";
 import { ScenarioSimulator } from "../cashflow/ScenarioSimulator.jsx";
+import { SubscriptionLeakRadar } from "../cashflow/SubscriptionLeakRadar.jsx";
 import { usePersistentState } from "../../hooks/usePersistentState.js";
+import { getBridgeUrl } from "../../utils/config.js";
 
 const CADENCES = [
   { id: "weekly", label: "Weekly Review & Plan", icon: "🔄", period: "7-Day Sprint" },
@@ -114,6 +116,53 @@ export default function ReviewTab({
   const [reviewHistory, setReviewHistory] = usePersistentState("review.history", []);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [taskInputs, setTaskInputs] = useState({});
+
+  // AI Executive Digest state
+  const [aiDigest, setAiDigest] = usePersistentState("review.aiDigest", null);
+  const [isGeneratingDigest, setIsGeneratingDigest] = useState(false);
+  const [digestError, setDigestError] = useState(null);
+
+  const generateWeeklyDigest = async () => {
+    setIsGeneratingDigest(true);
+    setDigestError(null);
+    try {
+      const bridgeUrl = getBridgeUrl();
+      const r = await fetch(`${bridgeUrl}/digest/weekly`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ofTasks,
+          startBal,
+          runwayBasis,
+          cfBudget,
+          debts,
+          debtMonthly,
+          priorities,
+          weeklyNotes,
+        }),
+        signal: AbortSignal.timeout(25000),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "Failed to generate digest");
+      setAiDigest(data);
+    } catch (err) {
+      console.error("Generate weekly digest failed:", err.message);
+      setDigestError(err.message || "Failed to reach bridge or generate digest");
+    } finally {
+      setIsGeneratingDigest(false);
+    }
+  };
+
+  const autoFillCommitments = () => {
+    if (!aiDigest || !aiDigest.recommendedCommitments) return;
+    const recs = aiDigest.recommendedCommitments;
+    setWeeklyNotes((prev) => ({
+      ...prev,
+      topCommitment1: recs[0]?.commitment || prev.topCommitment1,
+      topCommitment2: recs[1]?.commitment || prev.topCommitment2,
+      topCommitment3: recs[2]?.commitment || prev.topCommitment3,
+    }));
+  };
 
   // Helper step configs
   const currentSteps = useMemo(() => {
@@ -596,6 +645,78 @@ export default function ReviewTab({
                 </button>
               </div>
 
+              {/* AI Executive Weekly Digest */}
+              <div
+                style={{
+                  background: t.surface2,
+                  border: `1px solid ${t.border}`,
+                  borderRadius: 10,
+                  padding: 14,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 10,
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                    <span style={{ fontSize: 16 }}>✨</span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: t.text }}>
+                      AI Executive Weekly Digest
+                    </span>
+                  </div>
+                  <button
+                    className="btn"
+                    disabled={isGeneratingDigest}
+                    onClick={generateWeeklyDigest}
+                    style={{ fontSize: 11, padding: "4px 10px" }}
+                  >
+                    {isGeneratingDigest ? "Generating Digest…" : "✨ Generate AI Digest"}
+                  </button>
+                </div>
+
+                {digestError && (
+                  <div style={{ fontSize: 11, color: t.danger, padding: "4px 0" }}>
+                    ⚠️ {digestError}
+                  </div>
+                )}
+
+                {aiDigest && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 4 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <div style={{ fontSize: 10, color: t.textDim, textTransform: "uppercase", fontWeight: 700 }}>
+                        Executive Synthesis ({aiDigest.source || "bridge"})
+                      </div>
+                      {(aiDigest.executiveSummary || []).map((bullet, idx) => (
+                        <div key={idx} style={{ fontSize: 12, color: t.textSub, lineHeight: 1.4 }}>
+                          • {bullet}
+                        </div>
+                      ))}
+                    </div>
+
+                    {aiDigest.burnAudit && (
+                      <div style={{ fontSize: 11, color: t.accentSub, background: t.surface, padding: "8px 10px", borderRadius: 6, border: `1px solid ${t.border2}` }}>
+                        <strong>Burn & Runway Health:</strong> {aiDigest.burnAudit}
+                      </div>
+                    )}
+
+                    {aiDigest.recommendedCommitments && aiDigest.recommendedCommitments.length > 0 && (
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: `1px dashed ${t.border}`, paddingTop: 8 }}>
+                        <div style={{ fontSize: 11, color: t.textDim }}>
+                          Recommended commitments generated from strategic context.
+                        </div>
+                        <button
+                          onClick={autoFillCommitments}
+                          className="btn"
+                          style={{ fontSize: 10, padding: "3px 8px", background: t.accent + "22", borderColor: t.accent, color: t.accent }}
+                        >
+                          Auto-fill 3 Commitments Below ↵
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div>
                   <label style={{ fontSize: 11, color: t.textDim, fontWeight: 600, textTransform: "uppercase" }}>⚪️ Forward / Career Commitment (Priority 1)</label>
@@ -675,6 +796,22 @@ export default function ReviewTab({
                   {monthlyCompleted.recurring ? "✓ Marked Complete" : "Mark Step Complete"}
                 </button>
               </div>
+
+              <SubscriptionLeakRadar
+                lmData={lmData}
+                onFlagForCancel={(payee, amt) => {
+                  setMonthlyNotes((p) => {
+                    const current = p.subscriptionsToCancel || "";
+                    const addition = `• ${payee} ($${amt})`;
+                    if (current.includes(payee)) return p;
+                    return {
+                      ...p,
+                      subscriptionsToCancel: current ? `${current}\n${addition}` : addition,
+                    };
+                  });
+                }}
+                t={t}
+              />
 
               <div>
                 <label style={{ fontSize: 11, color: t.textDim, fontWeight: 600, textTransform: "uppercase" }}>Subscriptions to Cancel or Downgrade</label>
