@@ -3,6 +3,7 @@ import { PILLARS, getPillar } from "../../data/priorities.js";
 import { PriorityCard } from "./PriorityCard.jsx";
 import { EditPriorityModal } from "./EditPriorityModal.jsx";
 import { ManagePillarsModal } from "./ManagePillarsModal.jsx";
+import { FrictionRadar } from "./FrictionRadar.jsx";
 import { ofDueLabel } from "../../utils/dates.js";
 
 export default function PrioritiesTab({
@@ -274,6 +275,16 @@ export default function PrioritiesTab({
           </button>
         </div>
       </div>
+
+      {/* Friction & Stagnation Radar */}
+      <FrictionRadar
+        priorities={priorities}
+        ofProjects={ofProjects}
+        ofTasks={ofTasks}
+        pillars={pillars}
+        onCreateTask={onCreateTask}
+        t={t}
+      />
 
       {/* Filters: Pillar chips & Status */}
       <div

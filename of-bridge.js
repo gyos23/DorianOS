@@ -134,7 +134,14 @@ tell application "OmniFocus"
           if due date of t is not missing value then
             set tDue to (due date of t) as string
           end if
-          set output to output & (id of t) & "|" & (name of t) & "|" & pName & "|" & tDue & "|" & (flagged of t as string) & linefeed
+          set tTags to ""
+          try
+            set tagList to (name of every tag of t)
+            set AppleScript's text item delimiters to ","
+            set tTags to tagList as string
+            set AppleScript's text item delimiters to ""
+          end try
+          set output to output & (id of t) & "|" & (name of t) & "|" & pName & "|" & tDue & "|" & (flagged of t as string) & "|" & tTags & linefeed
         end if
       end repeat
     end repeat
@@ -166,12 +173,14 @@ end tell`;
         .filter(line => line.includes("|"))
         .map(line => {
           const parts = line.split("|");
+          const rawTags = parts[5] ? parts[5].split(",").map(s => s.trim()).filter(Boolean) : [];
           return {
             id:      parts[0] || "",
             name:    parts[1] || "",
             project: parts[2] || "",
             dueDate: parseASDate(parts[3]) || null,
             flagged: parts[4]?.trim() === "true",
+            tags:    rawTags,
           };
         })
         .filter(t => t.id && t.name);

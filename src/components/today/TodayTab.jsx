@@ -7,6 +7,7 @@ import { RunwayRadar } from "./RunwayRadar.jsx";
 
 export default function TodayTab({
   ofTasks = [],
+  ofProjects = [],
   onCompleteTask,
   onToggleFlag,
   onCreateTask,
@@ -18,6 +19,7 @@ export default function TodayTab({
   lmData = [],
   totalDebt,
   debtMonthly,
+  accounts = [],
   payoffDate,
   stalled,
   syncAllLM,
@@ -60,6 +62,31 @@ export default function TodayTab({
     () => priorities.filter((p) => p.status === "active"),
     [priorities]
   );
+
+  const nextDebtTarget = useMemo(() => {
+    const active = (accounts || []).filter((a) => a.balance > 0 && a.paidOffMonth !== null);
+    if (active.length === 0) return null;
+    active.sort((a, b) => a.paidOffMonth - b.paidOffMonth);
+    const target = active[0];
+    const targetDate = new Date(now.getFullYear(), now.getMonth() + target.paidOffMonth, 1);
+    return {
+      ...target,
+      formattedDate: targetDate.toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+    };
+  }, [accounts, now]);
+
+  const stalledPrioritiesCount = useMemo(() => {
+    return activePriorities.filter((p) => {
+      if (!p.ofProject) return p.currentValue === 0;
+      const target = p.ofProject.toLowerCase().trim();
+      const proj = (ofProjects || []).find(
+        (pr) =>
+          (pr.name || "").toLowerCase().trim() === target ||
+          (pr.name || "").toLowerCase().includes(target)
+      );
+      return proj?.stale;
+    }).length;
+  }, [activePriorities, ofProjects]);
 
   return (
     <div
@@ -363,6 +390,27 @@ export default function TodayTab({
               >
                 Quarterly Strategic Priorities ({activePriorities.length})
               </span>
+              {stalledPrioritiesCount > 0 && (
+                <span
+                  onClick={() => onNavigate("priorities")}
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    background: `${t.warning}18`,
+                    color: t.warning,
+                    border: `1px solid ${t.warning}40`,
+                    borderRadius: 12,
+                    padding: "2px 8px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                  title={`${stalledPrioritiesCount} priority has zero activity in OmniFocus for 14+ days. Click to inspect.`}
+                >
+                  ⚠️ {stalledPrioritiesCount} Stalled
+                </span>
+              )}
             </div>
             <button
               className="btn"
@@ -548,6 +596,38 @@ export default function TodayTab({
                 </div>
               </div>
             </div>
+
+            {nextDebtTarget && (
+              <div
+                style={{
+                  background: `${t.accent}0d`,
+                  border: `1px solid ${t.accent}30`,
+                  borderRadius: 8,
+                  padding: "10px 12px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 9, color: t.accent, textTransform: "uppercase", fontWeight: 700, letterSpacing: ".06em" }}>
+                    🎯 Next Target To Clear
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginTop: 1 }}>
+                    {nextDebtTarget.name}
+                  </div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: t.accent }}>
+                    {nextDebtTarget.formattedDate}
+                  </div>
+                  <div style={{ fontSize: 10, color: t.textDim, marginTop: 1 }}>
+                    +{fmt(nextDebtTarget.minPayment)}/mo unlocked
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

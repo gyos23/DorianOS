@@ -4,6 +4,7 @@ import { StatCard } from "../layout/StatCard.jsx";
 import { DebtCharts } from "./DebtCharts.jsx";
 import { AmortizationTable } from "./AmortizationTable.jsx";
 import { AccountsTable } from "./AccountsTable.jsx";
+import { DebtMilestoneRadar } from "./DebtMilestoneRadar.jsx";
 
 export default function DebtPayoffTab({
   debts,
@@ -26,7 +27,7 @@ export default function DebtPayoffTab({
   debtSyncStatus,
   t,
 }) {
-  const [activeDebtTab, setActiveDebtTab] = useState("chart");
+  const [activeDebtTab, setActiveDebtTab] = useState("milestones");
 
   const chartData = schedule.filter(
     (_, i) => i % Math.max(1, Math.floor(schedule.length / 60)) === 0 || i === schedule.length - 1
@@ -238,18 +239,32 @@ export default function DebtPayoffTab({
           background: t.surface,
         }}
       >
-        {["chart", "schedule", "accounts"].map((tab) => (
+        {["milestones", "chart", "schedule", "accounts"].map((tab) => (
           <button
             key={tab}
             className={`tab-btn ${activeDebtTab === tab ? "active" : ""}`}
             onClick={() => setActiveDebtTab(tab)}
           >
-            {tab}
+            {tab === "milestones"
+              ? "🎯 Snowball Milestones"
+              : tab === "chart"
+              ? "📈 Balance Forecast"
+              : tab === "schedule"
+              ? "📅 Amortization Schedule"
+              : "💳 Accounts & Rates"}
           </button>
         ))}
       </div>
 
       <div style={{ padding: "24px" }}>
+        {activeDebtTab === "milestones" && (
+          <DebtMilestoneRadar
+            accounts={accounts}
+            strategy={strategy}
+            extraPayment={extraPayment}
+            t={t}
+          />
+        )}
         {activeDebtTab === "chart" && (
           <DebtCharts chartData={chartData} debts={debts} accounts={accounts} t={t} />
         )}

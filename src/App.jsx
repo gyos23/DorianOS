@@ -399,6 +399,7 @@ export default function App() {
           <div style={{ display: section === "today" ? "contents" : "none" }}>
             <TodayTab
               ofTasks={ofTasks}
+              ofProjects={ofProjects}
               onCompleteTask={completeTask}
               onToggleFlag={toggleFlag}
               onCreateTask={createTask}
@@ -414,6 +415,7 @@ export default function App() {
               lmData={lmData}
               totalDebt={totalDebt}
               debtMonthly={debtMonthly}
+              accounts={accounts}
               payoffDate={payoffDate}
               stalled={stalled}
               syncAllLM={syncAllLM}

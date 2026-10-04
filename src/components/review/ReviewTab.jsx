@@ -8,6 +8,7 @@ import { usePersistentState } from "../../hooks/usePersistentState.js";
 import { getBridgeUrl } from "../../utils/config.js";
 
 import { CADENCES, WEEKLY_STEPS, MONTHLY_STEPS, QUARTERLY_STEPS } from "../../data/reviewSteps.js";
+import { ReviewHistoryTracker } from "./ReviewHistoryTracker.jsx";
 
 export default function ReviewTab({
   ofTasks = [],
@@ -89,6 +90,7 @@ export default function ReviewTab({
 
   const [reviewHistory, setReviewHistory] = usePersistentState("review.history", []);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showHistoryTracker, setShowHistoryTracker] = useState(false);
   const [taskInputs, setTaskInputs] = useState({});
 
   // AI Executive Digest state
@@ -300,15 +302,13 @@ export default function ReviewTab({
             })}
           </div>
 
-          {reviewHistory.length > 0 && (
-            <button
-              className="btn"
-              onClick={() => setShowHistoryModal(true)}
-              style={{ fontSize: 11, padding: "5px 10px", color: t.textDim }}
-            >
-              📜 Archive ({reviewHistory.length})
-            </button>
-          )}
+          <button
+            className={`btn ${showHistoryTracker ? "active" : ""}`}
+            onClick={() => setShowHistoryTracker((p) => !p)}
+            style={{ fontSize: 11, padding: "5px 10px" }}
+          >
+            📈 Commitment Velocity ({reviewHistory.length})
+          </button>
 
           <button
             className={`btn ${isCadenceDone ? "active" : ""}`}
@@ -319,6 +319,15 @@ export default function ReviewTab({
           </button>
         </div>
       </div>
+
+      {/* Commitment Velocity & Review History Panel */}
+      {showHistoryTracker && (
+        <ReviewHistoryTracker
+          reviewHistory={reviewHistory}
+          setReviewHistory={setReviewHistory}
+          t={t}
+        />
+      )}
 
       {/* Cadence Description & Progress Banner */}
       <div

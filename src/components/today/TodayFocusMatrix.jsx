@@ -3,6 +3,17 @@ import { dateKey, ofDueLabel } from "../../utils/dates.js";
 import { ofColor } from "../../data/tasks.js";
 import { QuickCaptureBar } from "../tasks/QuickCaptureBar.jsx";
 
+export function getTaskTags(task) {
+  if (Array.isArray(task.tags) && task.tags.length > 0) {
+    return task.tags.map((t) => t.toLowerCase());
+  }
+  const matches = (task.name || "").match(/(?:^|\s)(#[a-zA-Z0-9_-]+|@[a-zA-Z0-9_-]+)/g);
+  if (matches) {
+    return matches.map((m) => m.trim().replace(/^[#@]/, "").toLowerCase());
+  }
+  return [];
+}
+
 export function TodayFocusMatrix({
   ofTasks = [],
   onCompleteTask,
@@ -13,27 +24,45 @@ export function TodayFocusMatrix({
   t,
 }) {
   const [completingIds, setCompletingIds] = useState(new Set());
+  const [selectedTag, setSelectedTag] = useState("all");
 
   const todayKey = dateKey(new Date());
 
-  // Prioritize: Overdue first, then Due Today, then Flagged, then others
+  // Collect all unique tags across tasks
+  const availableTags = useMemo(() => {
+    const set = new Set();
+    for (const task of ofTasks) {
+      const tags = getTaskTags(task);
+      tags.forEach((tag) => set.add(tag));
+    }
+    return Array.from(set).sort();
+  }, [ofTasks]);
+
+  // Prioritize: Overdue first, then Due Today, then Flagged, then others, matching selectedTag
   const priorityTasks = useMemo(() => {
     const overdue = [];
     const today = [];
     const flagged = [];
+    const others = [];
 
     for (const task of ofTasks) {
+      const tags = getTaskTags(task);
+      if (selectedTag === "flagged" && !task.flagged) continue;
+      if (selectedTag !== "all" && selectedTag !== "flagged" && !tags.includes(selectedTag)) continue;
+
       if (task.dueDate && task.dueDate < todayKey) {
         overdue.push(task);
       } else if (task.dueDate === todayKey) {
         today.push(task);
       } else if (task.flagged) {
         flagged.push(task);
+      } else if (selectedTag !== "all") {
+        others.push(task);
       }
     }
 
-    return [...overdue, ...today, ...flagged];
-  }, [ofTasks, todayKey]);
+    return [...overdue, ...today, ...flagged, ...others];
+  }, [ofTasks, todayKey, selectedTag]);
 
   const handleComplete = (id) => {
     setCompletingIds((prev) => new Set([...prev, id]));
@@ -96,6 +125,46 @@ export function TodayFocusMatrix({
         bridgeStatus={bridgeStatus}
         t={t}
       />
+
+      {/* Tag & Context Filter Bar */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          overflowX: "auto",
+          scrollbarWidth: "none",
+          paddingBottom: 2,
+        }}
+      >
+        <span style={{ fontSize: 10, color: t.textDim, fontWeight: 700, textTransform: "uppercase", marginRight: 2 }}>
+          Mode:
+        </span>
+        <button
+          className={`btn ${selectedTag === "all" ? "active" : ""}`}
+          onClick={() => setSelectedTag("all")}
+          style={{ fontSize: 10, padding: "2px 8px", borderRadius: 12 }}
+        >
+          All ({ofTasks.length})
+        </button>
+        <button
+          className={`btn ${selectedTag === "flagged" ? "active" : ""}`}
+          onClick={() => setSelectedTag("flagged")}
+          style={{ fontSize: 10, padding: "2px 8px", borderRadius: 12 }}
+        >
+          🚩 Flagged
+        </button>
+        {availableTags.map((tag) => (
+          <button
+            key={tag}
+            className={`btn ${selectedTag === tag ? "active" : ""}`}
+            onClick={() => setSelectedTag(tag)}
+            style={{ fontSize: 10, padding: "2px 8px", borderRadius: 12 }}
+          >
+            #{tag}
+          </button>
+        ))}
+      </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {priorityTasks.slice(0, 8).map((task) => {
@@ -220,6 +289,22 @@ export function TodayFocusMatrix({
                       {task.dueDate}
                     </span>
                   )}
+                  {getTaskTags(task).map((tag) => (
+                    <span
+                      key={tag}
+                      style={{
+                        fontSize: 8.5,
+                        fontWeight: 600,
+                        background: t.surface,
+                        color: t.accent,
+                        border: `1px solid ${t.border2}`,
+                        padding: "1px 5px",
+                        borderRadius: 4,
+                      }}
+                    >
+                      #{tag}
+                    </span>
+                  ))}
                 </div>
               </div>
 
