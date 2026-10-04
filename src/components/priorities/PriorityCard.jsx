@@ -7,6 +7,7 @@ import { fmt } from "../../utils/formatters.js";
 export function PriorityCard({
   priority,
   ofTasks = [],
+  ofProjects = [],
   onUpdatePriority,
   onEditPriority,
   onDeletePriority,
@@ -22,6 +23,16 @@ export function PriorityCard({
   const [completingIds, setCompletingIds] = useState(new Set());
 
   const pillar = getPillar(pillars, priority.pillar);
+
+  // Match linked OmniFocus project metadata & pacing stats
+  const matchedProject = useMemo(() => {
+    if (!priority.ofProject || !ofProjects || ofProjects.length === 0) return null;
+    const target = priority.ofProject.toLowerCase().trim();
+    return ofProjects.find((p) => {
+      const pName = (p.name || "").toLowerCase().trim();
+      return pName === target || pName.includes(target) || target.includes(pName);
+    });
+  }, [priority.ofProject, ofProjects]);
 
   // Filter linked OmniFocus tasks
   const linkedTasks = useMemo(() => {
@@ -284,11 +295,87 @@ export function PriorityCard({
             OmniFocus Actions ({linkedTasks.length})
           </span>
           {priority.ofProject && (
-            <span style={{ fontSize: 9, color: ofColor(priority.ofProject), fontWeight: 600 }}>
-              {priority.ofProject}
-            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              {matchedProject?.isStale && (
+                <span
+                  title={`No activity in ${matchedProject.daysSinceActivity} days with open tasks pending`}
+                  style={{
+                    fontSize: 9,
+                    fontWeight: 700,
+                    color: "#f59e0b",
+                    background: "#f59e0b22",
+                    border: "1px solid #f59e0b44",
+                    padding: "1px 5px",
+                    borderRadius: 4,
+                  }}
+                >
+                  ⚠️ Stale ({matchedProject.daysSinceActivity}d)
+                </span>
+              )}
+              <span style={{ fontSize: 9, color: ofColor(priority.ofProject), fontWeight: 600 }}>
+                {priority.ofProject}
+              </span>
+            </div>
           )}
         </div>
+
+        {/* OmniFocus Project Milestone & Pacing Pill */}
+        {matchedProject && (
+          <div
+            style={{
+              background: t.surface2,
+              border: `1px solid ${t.border}`,
+              borderRadius: 6,
+              padding: "6px 9px",
+              marginBottom: 8,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+              <div
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: "50%",
+                  background: `${pillar.color}22`,
+                  border: `1.5px solid ${pillar.color}`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 10,
+                  fontWeight: 800,
+                  color: t.text,
+                  flexShrink: 0,
+                }}
+                title={`OmniFocus completion rate: ${matchedProject.completedTasks}/${matchedProject.totalTasks} tasks done`}
+              >
+                {matchedProject.completionRate}%
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {matchedProject.completedTasks}/{matchedProject.totalTasks} OF tasks completed
+                </div>
+                <div style={{ fontSize: 9, color: t.textDim }}>
+                  {matchedProject.remainingTasks} remaining · {matchedProject.daysSinceActivity !== null ? `${matchedProject.daysSinceActivity}d since edit` : "active"}
+                </div>
+              </div>
+            </div>
+
+            {matchedProject.dueDate && (
+              <div style={{ textAlign: "right", flexShrink: 0 }}>
+                <div style={{ fontSize: 8.5, color: t.textDim, textTransform: "uppercase", fontWeight: 600 }}>
+                  OF Milestone
+                </div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: t.accent }}>
+                  {new Date(matchedProject.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           {(showAllTasks ? linkedTasks : linkedTasks.slice(0, 3)).map((task) => {

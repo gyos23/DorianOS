@@ -39,6 +39,8 @@ const QUARTERLY_STEPS = [
 
 export default function ReviewTab({
   ofTasks = [],
+  ofProjects = [],
+  fetchOFProjects,
   completeTask,
   toggleFlag,
   onCreateTask,
@@ -484,6 +486,98 @@ export default function ReviewTab({
                 </div>
               ) : (
                 <div style={{ color: "#10B981", fontSize: 13, fontWeight: 600, padding: "8px 0" }}>✨ Great work! Your OmniFocus inbox is completely clear.</div>
+              )}
+
+              {/* Stale Projects & Milestone Pacing Audit */}
+              {ofProjects && ofProjects.length > 0 && (
+                <div style={{ borderTop: `1px solid ${t.border2}`, paddingTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: t.textSub, textTransform: "uppercase", letterSpacing: ".08em" }}>
+                        Active Projects Pacing & Stale Alert Audit
+                      </div>
+                      <div style={{ fontSize: 10, color: t.textDim }}>
+                        Flagging projects with no modifications in &ge;14 days and open tasks pending.
+                      </div>
+                    </div>
+                    {fetchOFProjects && (
+                      <button
+                        onClick={() => fetchOFProjects()}
+                        className="btn"
+                        style={{ fontSize: 10, padding: "3px 8px" }}
+                      >
+                        ↻ Refresh OF Projects
+                      </button>
+                    )}
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 8 }}>
+                    {ofProjects.map((p) => (
+                      <div
+                        key={p.id || p.name}
+                        style={{
+                          background: p.isStale ? t.dangerBg + "44" : t.surface2,
+                          border: `1px solid ${p.isStale ? t.dangerBd : t.border}`,
+                          borderRadius: 8,
+                          padding: "10px 12px",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 6,
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 6 }}>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: t.text, lineHeight: 1.2 }}>
+                              {p.name}
+                            </div>
+                            <div style={{ fontSize: 9, color: t.textDim, marginTop: 2 }}>
+                              {p.completedTasks}/{p.totalTasks} tasks ({p.completionRate}%)
+                            </div>
+                          </div>
+                          {p.isStale && (
+                            <span
+                              style={{
+                                fontSize: 9,
+                                fontWeight: 700,
+                                color: "#f59e0b",
+                                background: "#f59e0b22",
+                                border: "1px solid #f59e0b44",
+                                padding: "2px 5px",
+                                borderRadius: 4,
+                                flexShrink: 0,
+                              }}
+                            >
+                              ⚠️ Stale ({p.daysSinceActivity}d)
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div style={{ width: "100%", height: 4, background: t.border, borderRadius: 2, overflow: "hidden" }}>
+                          <div
+                            style={{
+                              width: `${p.completionRate}%`,
+                              height: "100%",
+                              background: p.isStale ? "#f59e0b" : "#10B981",
+                              borderRadius: 2,
+                            }}
+                          />
+                        </div>
+
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 9, color: t.textDim }}>
+                          <span>{p.remainingTasks} remaining</span>
+                          {p.dueDate ? (
+                            <span style={{ color: t.accent, fontWeight: 600 }}>
+                              Target: {new Date(p.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                            </span>
+                          ) : (
+                            <span>{p.daysSinceActivity !== null ? `${p.daysSinceActivity}d ago` : "recent"}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           )}

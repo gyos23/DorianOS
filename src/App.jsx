@@ -87,6 +87,8 @@ export default function App() {
   const {
     ofTasks,
     setOfTasks,
+    ofProjects,
+    setOfProjects,
     refreshStatus,
     setRefreshStatus,
     fetchOFTasks,
@@ -429,6 +431,8 @@ export default function App() {
           <div style={{ display: section === "review" ? "contents" : "none" }}>
             <ReviewTab
               ofTasks={ofTasks}
+              ofProjects={ofProjects}
+              fetchOFProjects={fetchOFProjects}
               completeTask={completeTask}
               toggleFlag={toggleFlag}
               onCreateTask={createTask}
@@ -462,6 +466,7 @@ export default function App() {
               priorities={priorities}
               setPriorities={setPriorities}
               ofTasks={ofTasks}
+              ofProjects={ofProjects}
               fetchOFProjects={fetchOFProjects}
               updateProjectNote={updateProjectNote}
               completeTask={completeTask}

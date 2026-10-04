@@ -9,6 +9,7 @@ export default function PrioritiesTab({
   priorities = [],
   setPriorities,
   ofTasks = [],
+  ofProjects = [],
   fetchOFProjects,
   updateProjectNote,
   completeTask,
@@ -345,6 +346,7 @@ export default function PrioritiesTab({
               key={priority.id}
               priority={priority}
               ofTasks={ofTasks}
+              ofProjects={ofProjects}
               onUpdatePriority={handleUpdatePriority}
               onEditPriority={handleOpenEdit}
               onDeletePriority={handleDeletePriority}

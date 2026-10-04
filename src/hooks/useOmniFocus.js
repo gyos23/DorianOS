@@ -33,8 +33,9 @@ export function useOmniFocus(bridgeStatus) {
     if (bridgeStatus === "online" && !hasAutoFetched.current) {
       hasAutoFetched.current = true;
       fetchOFTasks();
+      fetchOFProjects();
     }
-  }, [bridgeStatus, fetchOFTasks]);
+  }, [bridgeStatus, fetchOFTasks, fetchOFProjects]);
 
   const completeTask = useCallback(
     async (id) => {
@@ -118,12 +119,15 @@ export function useOmniFocus(bridgeStatus) {
     [setOfTasks]
   );
 
+  const [ofProjects, setOfProjects] = usePersistentState("tasks.ofProjects", []);
+
   const fetchOFProjects = useCallback(async () => {
     try {
       const bridgeUrl = getBridgeUrl();
-      const r = await fetch(`${bridgeUrl}/projects`, { signal: AbortSignal.timeout(30000) });
+      const r = await fetch(`${bridgeUrl}/projects`, { signal: AbortSignal.timeout(45000) });
       const data = await r.json();
       if (data.success && Array.isArray(data.projects)) {
+        setOfProjects(data.projects);
         return data.projects;
       }
       return [];
@@ -131,7 +135,7 @@ export function useOmniFocus(bridgeStatus) {
       console.error("Fetch OF projects error:", err.message);
       return [];
     }
-  }, []);
+  }, [setOfProjects]);
 
   const updateProjectNote = useCallback(async (projectName, note) => {
     try {
@@ -180,6 +184,8 @@ export function useOmniFocus(bridgeStatus) {
   return {
     ofTasks,
     setOfTasks,
+    ofProjects,
+    setOfProjects,
     refreshStatus,
     setRefreshStatus,
     fetchOFTasks,

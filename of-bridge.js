@@ -189,7 +189,7 @@ end tell`;
 
   // ── Live projects and notes fetch endpoint ─────────────────────────────────
   if (req.method === "GET" && req.url === "/projects") {
-    console.log(`[${new Date().toLocaleTimeString()}] Fetching active projects and notes from OmniFocus...`);
+    console.log(`[${new Date().toLocaleTimeString()}] Fetching active projects, completion rates, and pacing metrics from OmniFocus...`);
     const fetchProjsScript = `
 tell application "OmniFocus"
   tell default document
@@ -199,21 +199,81 @@ tell application "OmniFocus"
       set pId to (id of p as string)
       set pName to (name of p as string)
       set pNote to (note of p as string)
-      set output to output & pId & "<OF_FIELD>" & pName & "<OF_FIELD>" & pNote & "<OF_ROW>"
+      
+      -- Milestone due date
+      set pDue to ""
+      if due date of p is not missing value then
+        set pDue to (due date of p) as string
+      end if
+
+      -- Modification date
+      set pMod to ""
+      if modification date of p is not missing value then
+        set pMod to (modification date of p) as string
+      end if
+
+      -- Task completion stats
+      set allT to every flattened task of p
+      set totalCount to count of allT
+      set doneCount to 0
+      repeat with t in allT
+        if completed of t is true then
+          set doneCount to doneCount + 1
+        end if
+      end repeat
+
+      set output to output & pId & "<OF_FIELD>" & pName & "<OF_FIELD>" & pNote & "<OF_FIELD>" & pDue & "<OF_FIELD>" & pMod & "<OF_FIELD>" & totalCount & "<OF_FIELD>" & doneCount & "<OF_ROW>"
     end repeat
     return output
   end tell
 end tell`;
 
     try {
-      const raw = await runAppleScript(fetchProjsScript, 30000);
+      const raw = await runAppleScript(fetchProjsScript, 45000);
       const rows = raw.split("<OF_ROW>").map(r => r.trim()).filter(Boolean);
       const projects = rows.map(r => {
-        const [id, name, ...noteParts] = r.split("<OF_FIELD>");
+        const parts = r.split("<OF_FIELD>");
+        const id = (parts[0] || "").trim();
+        const name = (parts[1] || "").trim();
+        const note = (parts[2] || "").trim();
+        const rawDue = (parts[3] || "").trim();
+        const rawMod = (parts[4] || "").trim();
+        const totalTasks = parseInt(parts[5] || "0", 10);
+        const completedTasks = parseInt(parts[6] || "0", 10);
+
+        function parseDate(str) {
+          if (!str) return null;
+          try {
+            const d = new Date(str.replace(" at ", " "));
+            if (!isNaN(d.getTime())) return d.toISOString();
+          } catch (_) {}
+          return null;
+        }
+
+        const dueDate = parseDate(rawDue);
+        const lastModified = parseDate(rawMod);
+        const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+        
+        let daysSinceActivity = null;
+        if (lastModified) {
+          const diffMs = Date.now() - new Date(lastModified).getTime();
+          daysSinceActivity = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+        }
+
+        const isStale = daysSinceActivity !== null && daysSinceActivity >= 14 && totalTasks > completedTasks;
+
         return {
-          id: id ? id.trim() : "",
-          name: name ? name.trim() : "",
-          note: noteParts.join("<OF_FIELD>").trim()
+          id,
+          name,
+          note,
+          dueDate,
+          lastModified,
+          daysSinceActivity,
+          totalTasks,
+          completedTasks,
+          remainingTasks: Math.max(0, totalTasks - completedTasks),
+          completionRate,
+          isStale,
         };
       });
       res.writeHead(200, { "Content-Type": "application/json" });
