@@ -1,6 +1,28 @@
 import React, { useMemo } from "react";
 import { PILLARS, getPillar } from "../../data/priorities.js";
 
+// Helper for resilient project matching across emoji decorations & punctuation
+function matchProjectNames(target, candidate) {
+  if (!target || !candidate) return false;
+  const t = target.toLowerCase().trim();
+  const c = candidate.toLowerCase().trim();
+  if (t === c || t.includes(c) || c.includes(t)) return true;
+
+  const clean = (s) =>
+    s
+      .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/gu, "")
+      .replace(/[^\w\s]/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const cleanT = clean(t);
+  const cleanC = clean(c);
+  if (cleanT && cleanC && (cleanT.includes(cleanC) || cleanC.includes(cleanT))) {
+    return true;
+  }
+  return false;
+}
+
 export function FrictionRadar({
   priorities = [],
   ofProjects = [],
@@ -19,34 +41,46 @@ export function FrictionRadar({
         // Find matching project
         const targetProjName = (priority.ofProject || "").toLowerCase().trim();
         const matchedProj = ofProjects.find((pr) => {
-          const name = (pr.name || "").toLowerCase().trim();
-          return targetProjName && (name === targetProjName || name.includes(targetProjName) || targetProjName.includes(name));
+          return matchProjectNames(targetProjName, pr.name);
         });
 
         // Find linked open tasks
         const linkedTasks = ofTasks.filter((task) => {
-          const taskProj = (task.project || "").toLowerCase().trim();
-          return (
-            targetProjName &&
-            (taskProj === targetProjName || taskProj.includes(targetProjName) || targetProjName.includes(taskProj))
-          );
+          return matchProjectNames(targetProjName, task.project);
         });
 
         let reason = null;
         let severity = null;
         let daysStuck = matchedProj?.daysSinceActivity ?? null;
 
-        if (matchedProj?.stale) {
-          reason = `No OmniFocus activity recorded in ${matchedProj.daysSinceActivity} days`;
-          severity = matchedProj.daysSinceActivity >= 21 ? "critical" : "warning";
+        const isStale = matchedProj?.isStale || matchedProj?.stale;
+        const daysSinceAct = matchedProj?.daysSinceActivity;
+        const hasRecentActivity = daysSinceAct !== null && daysSinceAct !== undefined && daysSinceAct < 7;
+
+        // If the project had activity within the last 7 days (e.g. tasks completed today!),
+        // it has forward momentum and is NOT stagnant.
+        if (hasRecentActivity) {
+          return null;
+        }
+
+        if (isStale) {
+          reason = `No OmniFocus activity recorded in ${daysSinceAct} days`;
+          severity = daysSinceAct >= 21 ? "critical" : "warning";
+          daysStuck = daysSinceAct;
         } else if (!priority.ofProject && priority.currentValue === 0) {
           reason = "Unlinked to OmniFocus project & 0% progress";
           severity = "warning";
-          daysStuck = 14;
-        } else if (linkedTasks.length === 0 && (!matchedProj || matchedProj.totalTasks === 0)) {
-          reason = "Zero open next actions defined in OmniFocus";
-          severity = "warning";
-          daysStuck = 14;
+          daysStuck = null;
+        } else if (linkedTasks.length === 0) {
+          if (daysSinceAct !== null && daysSinceAct !== undefined && daysSinceAct >= 7) {
+            reason = `Zero open next actions defined in OmniFocus (idle ${daysSinceAct}d)`;
+            severity = daysSinceAct >= 21 ? "critical" : "warning";
+            daysStuck = daysSinceAct;
+          } else if (!matchedProj) {
+            reason = "Zero open next actions found in OmniFocus";
+            severity = "warning";
+            daysStuck = null;
+          }
         }
 
         if (!reason) return null;
@@ -151,7 +185,7 @@ export function FrictionRadar({
                     textTransform: "uppercase",
                   }}
                 >
-                  {daysStuck ? `Stuck ${daysStuck}d` : "Stagnant"}
+                  {daysStuck !== null && daysStuck !== undefined ? `Stuck ${daysStuck}d` : "Stagnant"}
                 </span>
               </div>
 

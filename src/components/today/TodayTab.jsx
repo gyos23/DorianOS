@@ -87,7 +87,10 @@ export default function TodayTab({
           (pr.name || "").toLowerCase().trim() === target ||
           (pr.name || "").toLowerCase().includes(target)
       );
-      return proj?.stale;
+      if (!proj) return false;
+      const days = proj.daysSinceActivity;
+      if (days !== null && days !== undefined && days < 7) return false;
+      return proj.isStale || proj.stale;
     }).length;
   }, [activePriorities, ofProjects]);
 

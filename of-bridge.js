@@ -240,21 +240,36 @@ tell application "OmniFocus"
         set pDue to (due date of p) as string
       end if
 
-      -- Modification date
-      set pMod to ""
+      -- Modification date & latest task activity
+      set maxDate to missing value
       if modification date of p is not missing value then
-        set pMod to (modification date of p) as string
+        set maxDate to modification date of p
       end if
 
-      -- Task completion stats
+      -- Task completion stats & latest task activity
       set allT to every flattened task of p
       set totalCount to count of allT
       set doneCount to 0
       repeat with t in allT
         if completed of t is true then
           set doneCount to doneCount + 1
+          if completion date of t is not missing value then
+            if maxDate is missing value or (completion date of t) > maxDate then
+              set maxDate to completion date of t
+            end if
+          end if
+        end if
+        if modification date of t is not missing value then
+          if maxDate is missing value or (modification date of t) > maxDate then
+            set maxDate to modification date of t
+          end if
         end if
       end repeat
+
+      set pMod to ""
+      if maxDate is not missing value then
+        set pMod to maxDate as string
+      end if
 
       set output to output & pId & "<OF_FIELD>" & pName & "<OF_FIELD>" & pNote & "<OF_FIELD>" & pDue & "<OF_FIELD>" & pMod & "<OF_FIELD>" & totalCount & "<OF_FIELD>" & doneCount & "<OF_ROW>"
     end repeat
@@ -308,6 +323,7 @@ end tell`;
           remainingTasks: Math.max(0, totalTasks - completedTasks),
           completionRate,
           isStale,
+          stale: isStale,
         };
       });
       res.writeHead(200, { "Content-Type": "application/json" });

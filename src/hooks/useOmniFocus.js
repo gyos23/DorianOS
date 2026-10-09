@@ -57,7 +57,30 @@ export function useOmniFocus(bridgeStatus) {
 
   const completeTask = useCallback(
     async (id) => {
-      setOfTasks((prev) => prev.filter((t) => t.id !== id));
+      setOfTasks((prev) => {
+        const task = prev.find((t) => t.id === id);
+        if (task && task.project) {
+          const tNorm = (task.project || "").toLowerCase().trim();
+          setOfProjects((projs) =>
+            projs.map((p) => {
+              const pNorm = (p.name || "").toLowerCase().trim();
+              if (pNorm === tNorm || pNorm.includes(tNorm) || tNorm.includes(pNorm)) {
+                return {
+                  ...p,
+                  daysSinceActivity: 0,
+                  lastModified: new Date().toISOString(),
+                  completedTasks: (p.completedTasks || 0) + 1,
+                  remainingTasks: Math.max(0, (p.remainingTasks || 1) - 1),
+                  isStale: false,
+                  stale: false,
+                };
+              }
+              return p;
+            })
+          );
+        }
+        return prev.filter((t) => t.id !== id);
+      });
       try {
         const bridgeUrl = getBridgeUrl();
         const r = await fetch(`${bridgeUrl}/tasks/complete`, {
@@ -70,12 +93,13 @@ export function useOmniFocus(bridgeStatus) {
         if (!r.ok || !data.success) {
           throw new Error(data.error || "Failed to complete task");
         }
+        fetchOFProjects();
       } catch (err) {
         console.error("Complete task error:", err.message);
         fetchOFTasks();
       }
     },
-    [setOfTasks, fetchOFTasks]
+    [setOfTasks, setOfProjects, fetchOFProjects, fetchOFTasks]
   );
 
   const toggleFlag = useCallback(
