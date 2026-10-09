@@ -15,14 +15,35 @@ export function PriorityCard({
   onToggleFlag,
   onCreateTask,
   pillars = PILLARS,
+  cashZeroDate,
   t,
 }) {
   const [showSmart, setShowSmart] = useState(false);
   const [showAllTasks, setShowAllTasks] = useState(false);
   const [newTaskName, setNewTaskName] = useState("");
   const [completingIds, setCompletingIds] = useState(new Set());
+  const [isEditingValue, setIsEditingValue] = useState(false);
+  const [editInputVal, setEditInputVal] = useState("");
 
   const pillar = getPillar(pillars, priority.pillar);
+
+  const isWeeklyCadence =
+    priority.metricType === "weekly_cadence" ||
+    priority.cadence === "weekly" ||
+    priority.id === "p-forward-role" ||
+    (priority.unit && priority.unit.toLowerCase().includes("week"));
+
+  const isRunway = priority.metricType === "runway";
+
+  // Calculate live days until cash zero if available
+  const liveRunwayDays = useMemo(() => {
+    if (!cashZeroDate) return null;
+    const zero = new Date(cashZeroDate + "T12:00:00");
+    const now = new Date();
+    now.setHours(12, 0, 0, 0);
+    const diffDays = Math.ceil((zero.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 0;
+  }, [cashZeroDate]);
 
   // Match linked OmniFocus project metadata & pacing stats
   const matchedProject = useMemo(() => {
@@ -53,13 +74,21 @@ export function PriorityCard({
     return Math.min(100, Math.round((priority.currentValue / priority.targetValue) * 100));
   }, [priority.currentValue, priority.targetValue]);
 
-  const handleIncrement = (delta) => {
-    const nextVal = Math.max(0, (priority.currentValue || 0) + delta);
+  const handleSetExact = (val) => {
+    const nextVal = Math.max(0, val);
     onUpdatePriority({
       ...priority,
       currentValue: nextVal,
-      status: nextVal >= priority.targetValue && priority.targetValue > 0 ? "completed" : priority.status,
+      // Do not auto-complete runway or weekly cadence goals!
+      status:
+        !isRunway && !isWeeklyCadence && nextVal >= priority.targetValue && priority.targetValue > 0
+          ? "completed"
+          : priority.status,
     });
+  };
+
+  const handleIncrement = (delta) => {
+    handleSetExact((priority.currentValue || 0) + delta);
   };
 
   const handleStatusChange = (newStatus) => {
@@ -201,14 +230,59 @@ export function PriorityCard({
           gap: 8,
         }}
       >
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
           <div>
-            <span style={{ fontSize: 20, fontWeight: 800, color: t.text, fontVariantNumeric: "tabular-nums" }}>
-              {priority.currentValue}
-            </span>
-            <span style={{ fontSize: 12, color: t.textDim, marginLeft: 4 }}>
-              / {priority.targetValue} {priority.unit}
-            </span>
+            {isEditingValue ? (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <input
+                  type="number"
+                  autoFocus
+                  value={editInputVal}
+                  onChange={(e) => setEditInputVal(e.target.value)}
+                  onBlur={() => {
+                    const parsed = parseFloat(editInputVal);
+                    if (!isNaN(parsed) && parsed >= 0) handleSetExact(parsed);
+                    setIsEditingValue(false);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      const parsed = parseFloat(editInputVal);
+                      if (!isNaN(parsed) && parsed >= 0) handleSetExact(parsed);
+                      setIsEditingValue(false);
+                    } else if (e.key === "Escape") {
+                      setIsEditingValue(false);
+                    }
+                  }}
+                  style={{
+                    width: 65,
+                    padding: "2px 6px",
+                    fontSize: 18,
+                    fontWeight: 800,
+                    background: t.surface,
+                    border: `1px solid ${t.accent}`,
+                    borderRadius: 6,
+                    color: t.text,
+                  }}
+                />
+                <span style={{ fontSize: 12, color: t.textDim }}>{priority.unit}</span>
+              </span>
+            ) : (
+              <span
+                onClick={() => {
+                  setEditInputVal(String(priority.currentValue || 0));
+                  setIsEditingValue(true);
+                }}
+                title="Click to edit value directly"
+                style={{ cursor: "pointer" }}
+              >
+                <span style={{ fontSize: 20, fontWeight: 800, color: t.text, fontVariantNumeric: "tabular-nums" }}>
+                  {priority.currentValue}
+                </span>
+                <span style={{ fontSize: 12, color: t.textDim, marginLeft: 4 }}>
+                  / {priority.targetValue} {priority.unit}
+                </span>
+              </span>
+            )}
             {priority.revenuePerUnit && (
               <span style={{ fontSize: 11, color: t.accent, marginLeft: 8, fontWeight: 600 }}>
                 ({fmt(priority.currentValue * priority.revenuePerUnit)} / {fmt(priority.targetValue * priority.revenuePerUnit)})
@@ -216,32 +290,131 @@ export function PriorityCard({
             )}
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <button
-              className="btn"
-              onClick={() => handleIncrement(-1)}
-              style={{ fontSize: 11, padding: "2px 7px", lineHeight: 1 }}
-              title="Decrement"
-            >
-              −1
-            </button>
-            <button
-              className="btn active"
-              onClick={() => handleIncrement(1)}
-              style={{ fontSize: 11, padding: "2px 8px", lineHeight: 1 }}
-              title="Increment +1"
-            >
-              +1
-            </button>
-            <button
-              className="btn"
-              onClick={() => handleIncrement(5)}
-              style={{ fontSize: 11, padding: "2px 7px", lineHeight: 1 }}
-              title="Increment +5"
-            >
-              +5
-            </button>
-          </div>
+          {/* Metric Adjustment Controls */}
+          {isRunway ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+              {liveRunwayDays !== null && (
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => handleSetExact(liveRunwayDays)}
+                  style={{
+                    fontSize: 10,
+                    padding: "3px 8px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    background: `${t.accent}14`,
+                    color: t.accent,
+                    border: `1px solid ${t.accent}30`,
+                    fontWeight: 700,
+                  }}
+                  title={`Sync live runway calculated from cash flow (${liveRunwayDays} days)`}
+                >
+                  ⚡ Live: {liveRunwayDays}d
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn"
+                onClick={() => handleIncrement(-15)}
+                style={{ fontSize: 10, padding: "2px 6px" }}
+                title="Decrease by 15 days"
+              >
+                −15d
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => handleIncrement(15)}
+                style={{ fontSize: 10, padding: "2px 6px" }}
+                title="Increase by 15 days"
+              >
+                +15d
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setEditInputVal(String(priority.currentValue || 0));
+                  setIsEditingValue(true);
+                }}
+                style={{ fontSize: 10, padding: "2px 6px", color: t.textDim }}
+                title="Set exact runway days"
+              >
+                ✎ Set
+              </button>
+            </div>
+          ) : isWeeklyCadence ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => handleIncrement(-1)}
+                style={{ fontSize: 11, padding: "2px 7px", lineHeight: 1 }}
+                title="Decrement -1 application"
+              >
+                −1
+              </button>
+              <button
+                type="button"
+                className="btn active"
+                onClick={() => handleIncrement(1)}
+                style={{ fontSize: 11, padding: "2px 8px", lineHeight: 1 }}
+                title="Log +1 application"
+              >
+                +1
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => handleIncrement(2)}
+                style={{ fontSize: 11, padding: "2px 7px", lineHeight: 1 }}
+                title="Log +2 applications (daily target)"
+              >
+                +2
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => handleSetExact(0)}
+                style={{ fontSize: 10, padding: "2px 6px", color: t.textDim }}
+                title="Reset counter for new week"
+              >
+                ↺ Week
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => handleIncrement(-1)}
+                style={{ fontSize: 11, padding: "2px 7px", lineHeight: 1 }}
+                title="Decrement"
+              >
+                −1
+              </button>
+              <button
+                type="button"
+                className="btn active"
+                onClick={() => handleIncrement(1)}
+                style={{ fontSize: 11, padding: "2px 8px", lineHeight: 1 }}
+                title="Increment +1"
+              >
+                +1
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => handleIncrement(5)}
+                style={{ fontSize: 11, padding: "2px 7px", lineHeight: 1 }}
+                title="Increment +5"
+              >
+                +5
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Progress Bar */}
@@ -266,9 +439,21 @@ export function PriorityCard({
         </div>
 
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: t.textDim }}>
-          <span>{percent}% achieved</span>
+          <span>
+            {isWeeklyCadence
+              ? percent >= 100
+                ? "🎯 Weekly Target Met! (" + priority.currentValue + "/" + priority.targetValue + ")"
+                : `${percent}% of weekly target (${priority.targetValue}/wk)`
+              : isRunway
+              ? percent >= 100
+                ? `🛡️ ${priority.currentValue}d Runway Protected (100% of ${priority.targetValue}d target)`
+                : `${priority.currentValue}d of ${priority.targetValue}d target (${percent}%)`
+              : `${percent}% achieved`}
+          </span>
           {priority.targetDate && (
-            <span>Target: {priority.targetDate}</span>
+            <span>
+              {isWeeklyCadence ? "Weekly Cadence" : `Target: ${priority.targetDate}`}
+            </span>
           )}
         </div>
       </div>

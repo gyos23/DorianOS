@@ -326,12 +326,13 @@ export function EditPriorityModal({
 
             <div>
               <label style={{ fontSize: 10, color: t.textDim, textTransform: "uppercase", fontWeight: 600 }}>
-                Target Date
+                Target / Cadence
               </label>
               <input
-                type="date"
-                value={formData.targetDate}
+                type="text"
+                value={formData.targetDate || ""}
                 onChange={(e) => setFormData({ ...formData, targetDate: e.target.value })}
+                placeholder="YYYY-MM-DD or Weekly Cadence"
                 style={{
                   width: "100%",
                   padding: "5px 8px",

@@ -22,29 +22,40 @@ function stripJsonFence(text) {
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
 function toAppleScriptDate(iso) {
-  const [yr, mo, dy] = iso.split("-");
-  return `${MONTHS[parseInt(mo)-1]} ${parseInt(dy)}, ${yr}`;
+  const [datePart, timePart] = iso.split(/[T ]/);
+  const [yr, mo, dy] = datePart.split("-");
+  const monthName = MONTHS[parseInt(mo)-1];
+  if (timePart) {
+    const timeFormatted = timePart.length === 5 ? `${timePart}:00` : timePart;
+    return `${monthName} ${parseInt(dy)}, ${yr} ${timeFormatted}`;
+  }
+  return `${monthName} ${parseInt(dy)}, ${yr}`;
 }
 
 function buildScript(changes) {
-  const lines = changes.map(c => {
-    // Try ID first, fall back to name if ID lookup fails
+  const lines = [];
+  for (const c of changes) {
     const byId   = `first flattened task whose id = "${c.id}"`;
     const byName = `first flattened task whose name = "${(c.name||"").replace(/\\/g,"\\\\").replace(/"/g,'\\"')}"`;
     const lookup = c.id ? byId : byName;
 
     if (c.complete) {
-      return `  set completed of (${lookup}) to true`;
+      lines.push(`  set completed of (${lookup}) to true`);
     }
     if (c.newDate) {
       const dateStr = toAppleScriptDate(c.newDate);
-      return `  set due date of (${lookup}) to date "${dateStr}"`;
+      lines.push(`  set due date of (${lookup}) to date "${dateStr}"`);
+    } else if (c.newDate === null) {
+      lines.push(`  set due date of (${lookup}) to missing value`);
     }
-    if (c.newDate === null) {
-      return `  set due date of (${lookup}) to missing value`;
+    if (c.estimatedMinutes !== undefined) {
+      if (c.estimatedMinutes === null) {
+        lines.push(`  set estimated minutes of (${lookup}) to missing value`);
+      } else {
+        lines.push(`  set estimated minutes of (${lookup}) to ${parseInt(c.estimatedMinutes, 10)}`);
+      }
     }
-    return "";
-  }).filter(Boolean);
+  }
 
   if (!lines.length) return null;
 
@@ -119,7 +130,13 @@ tell application "OmniFocus"
         if due date of t is not missing value then
           set tDue to (due date of t) as string
         end if
-        set output to output & (id of t) & "|" & (name of t) & "|📥 Inbox|" & tDue & "|" & (flagged of t as string) & linefeed
+        set tEst to ""
+        try
+          if estimated minutes of t is not missing value then
+            set tEst to (estimated minutes of t) as string
+          end if
+        end try
+        set output to output & (id of t) & "|" & (name of t) & "|📥 Inbox|" & tDue & "|" & (flagged of t as string) & "||" & tEst & linefeed
       end if
     end repeat
 
@@ -141,7 +158,13 @@ tell application "OmniFocus"
             set tTags to tagList as string
             set AppleScript's text item delimiters to ""
           end try
-          set output to output & (id of t) & "|" & (name of t) & "|" & pName & "|" & tDue & "|" & (flagged of t as string) & "|" & tTags & linefeed
+          set tEst to ""
+          try
+            if estimated minutes of t is not missing value then
+              set tEst to (estimated minutes of t) as string
+            end if
+          end try
+          set output to output & (id of t) & "|" & (name of t) & "|" & pName & "|" & tDue & "|" & (flagged of t as string) & "|" & tTags & "|" & tEst & linefeed
         end if
       end repeat
     end repeat
@@ -174,6 +197,7 @@ end tell`;
         .map(line => {
           const parts = line.split("|");
           const rawTags = parts[5] ? parts[5].split(",").map(s => s.trim()).filter(Boolean) : [];
+          const estMin = parts[6] ? parseInt(parts[6].trim(), 10) : null;
           return {
             id:      parts[0] || "",
             name:    parts[1] || "",
@@ -181,6 +205,7 @@ end tell`;
             dueDate: parseASDate(parts[3]) || null,
             flagged: parts[4]?.trim() === "true",
             tags:    rawTags,
+            estimatedMinutes: (!isNaN(estMin) && estMin > 0) ? estMin : null,
           };
         })
         .filter(t => t.id && t.name);

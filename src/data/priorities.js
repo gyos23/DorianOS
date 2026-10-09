@@ -63,20 +63,21 @@ export const INITIAL_PRIORITIES = [
     pillar: "forward",
     ofProject: "⚪️1. Find Next Role ▶️",
     status: "active", // active | paused | completed | dropped
-    metricType: "counter", // counter | currency | percent | runway
-    currentValue: 12,
-    targetValue: 50,
-    unit: "applications",
-    dailyTarget: 5,
-    targetDate: "2026-10-31",
+    metricType: "weekly_cadence", // counter | currency | percent | runway | weekly_cadence
+    cadence: "weekly",
+    currentValue: 0,
+    targetValue: 10,
+    unit: "apps / wk",
+    dailyTarget: 2,
+    targetDate: "Weekly Cadence",
     smart: {
       specific: "Land a Delivery Manager (or Project/Program Manager) role — hybrid or remote, contract or perm.",
-      measurable: "5 high-quality applications per weekday; goal closes when an offer is signed.",
-      achievable: "Bare minimum, not a stretch — top priority ahead of Irish company setup.",
-      relevant: "Direct financial inflection point post-Aer Lingus (Aug 7) — closes spend gap.",
-      timeBound: "2-week checkpoint to review applications sent vs. interviews landed and adjust.",
+      measurable: "10 high-quality applications weekly (2 per weekday); pipeline stays active until an offer is signed.",
+      achievable: "2 tailored, high-quality applications per weekday is sustainable and avoids stopping at an arbitrary finish line.",
+      relevant: "Direct financial inflection point post-Aer Lingus (Aug 7) — closes spend gap without stopping momentum.",
+      timeBound: "Weekly cadence; ongoing focus until an offer is signed.",
     },
-    notes: "Targeting Delivery Manager & Senior PM roles. Resume tailored for aviation, tech, and enterprise ops.",
+    notes: "10 high-quality tailored applications weekly. Resume tailored for aviation, tech, and enterprise ops.",
   },
   {
     id: "p-finance-runway",

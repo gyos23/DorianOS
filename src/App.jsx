@@ -36,6 +36,39 @@ export default function App() {
   }, [section]);
   const [pillars, setPillars] = usePersistentState("pillars", INITIAL_PILLARS);
   const [priorities, setPriorities] = usePersistentState("priorities.list", INITIAL_PRIORITIES);
+
+  // Auto-migrate legacy 50-total Forward goal into the 10 apps weekly cadence
+  useEffect(() => {
+    setPriorities((prev) => {
+      let changed = false;
+      const updated = prev.map((p) => {
+        if (p.id === "p-forward-role" && (p.targetValue === 50 || p.unit === "applications")) {
+          changed = true;
+          return {
+            ...p,
+            targetValue: 10,
+            unit: "apps / wk",
+            status: "active",
+            metricType: "weekly_cadence",
+            cadence: "weekly",
+            currentValue: p.currentValue >= 50 ? 0 : Math.min(p.currentValue, 10),
+            targetDate: "Weekly Cadence",
+            smart: {
+              specific: "Land a Delivery Manager (or Project/Program Manager) role — hybrid or remote, contract or perm.",
+              measurable: "10 high-quality applications weekly (2 per weekday); pipeline stays active until an offer is signed.",
+              achievable: "2 tailored, high-quality applications per weekday is sustainable and avoids stopping at an arbitrary finish line.",
+              relevant: "Direct financial inflection point post-Aer Lingus (Aug 7) — closes spend gap without stopping momentum.",
+              timeBound: "Weekly cadence; ongoing focus until an offer is signed.",
+            },
+            notes: "10 high-quality tailored applications weekly. Resume tailored for aviation, tech, and enterprise ops.",
+          };
+        }
+        return p;
+      });
+      return changed ? updated : prev;
+    });
+  }, [setPriorities]);
+
   const [debts, setDebts] = usePersistentState("debts", INITIAL_DEBTS);
   const [strategy, setStrategy] = usePersistentState("strategy", "avalanche");
   const [extraPayment, setExtraPayment] = usePersistentState("extraPayment", 500);
@@ -98,6 +131,7 @@ export default function App() {
     toggleFlag,
     createTask,
     updateTaskDueDate,
+    batchSyncTasks,
   } = useOmniFocus(bridgeStatus);
 
   const checkBridge = useCallback(async () => {
@@ -424,6 +458,7 @@ export default function App() {
               priorities={priorities}
               pillars={pillars}
               onNavigate={setSection}
+              onBatchSyncTasks={batchSyncTasks}
               t={t}
             />
           </div>
@@ -476,6 +511,7 @@ export default function App() {
               onCreateTask={createTask}
               pillars={pillars}
               setPillars={setPillars}
+              cashZeroDate={cashZeroDate}
               t={t}
             />
           </div>

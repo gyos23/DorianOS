@@ -18,6 +18,7 @@ export default function PrioritiesTab({
   onCreateTask,
   pillars = PILLARS,
   setPillars,
+  cashZeroDate,
   t,
 }) {
   const [selectedPillar, setSelectedPillar] = useState("all");
@@ -365,6 +366,7 @@ export default function PrioritiesTab({
               onToggleFlag={toggleFlag}
               onCreateTask={onCreateTask}
               pillars={pillars}
+              cashZeroDate={cashZeroDate}
               t={t}
             />
           ))}

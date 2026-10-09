@@ -2,6 +2,14 @@ import React, { useState, useMemo } from "react";
 import { dateKey, ofDueLabel } from "../../utils/dates.js";
 import { ofColor } from "../../data/tasks.js";
 import { QuickCaptureBar } from "../tasks/QuickCaptureBar.jsx";
+import {
+  planDailyLoad,
+  getTaskDuration,
+  getTaskPriority,
+  getTaskEnergy,
+  priorityLabel,
+  ENERGY_CONFIG,
+} from "../../utils/dailyLoadPlanner.js";
 
 export function getTaskTags(task) {
   if (Array.isArray(task.tags) && task.tags.length > 0) {
@@ -21,6 +29,7 @@ export function TodayFocusMatrix({
   onCreateTask,
   bridgeStatus,
   onNavigateTasks,
+  onOpenLoadPlanner,
   t,
 }) {
   const [completingIds, setCompletingIds] = useState(new Set());
@@ -63,6 +72,16 @@ export function TodayFocusMatrix({
 
     return [...overdue, ...today, ...flagged, ...others];
   }, [ofTasks, todayKey, selectedTag]);
+
+  // Compute Daily Load stats for today's active tasks
+  const dailyLoadPlan = useMemo(() => {
+    const todayCandidateTasks = ofTasks.filter(
+      (t) => (t.dueDate && t.dueDate <= todayKey) || t.flagged
+    );
+    return planDailyLoad(todayCandidateTasks);
+  }, [ofTasks, todayKey]);
+
+  const { stats } = dailyLoadPlan;
 
   const handleComplete = (id) => {
     setCompletingIds((prev) => new Set([...prev, id]));
@@ -111,13 +130,99 @@ export function TodayFocusMatrix({
           </span>
         </div>
 
-        <button
-          className="btn"
-          onClick={onNavigateTasks}
-          style={{ fontSize: 11, padding: "3px 10px", color: t.textDim }}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {onOpenLoadPlanner && (
+            <button
+              className="btn btn-primary"
+              onClick={onOpenLoadPlanner}
+              style={{
+                fontSize: 11,
+                padding: "3px 10px",
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                fontWeight: 700,
+              }}
+              title="Open Daily Load Planning Engine to realistically size and balance your day"
+            >
+              <span>⚡</span> Plan My Day
+            </button>
+          )}
+
+          <button
+            className="btn"
+            onClick={onNavigateTasks}
+            style={{ fontSize: 11, padding: "3px 10px", color: t.textDim }}
+          >
+            View All ({ofTasks.length}) →
+          </button>
+        </div>
+      </div>
+
+      {/* Daily Capacity & Load Engine Status Card */}
+      <div
+        style={{
+          background: t.surface2,
+          border: `1px solid ${stats.isOverCapacity ? t.warning + "40" : t.border2}`,
+          borderRadius: 10,
+          padding: "10px 14px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700 }}>
+            <span>{stats.isOverCapacity ? "⚠️" : "🛡️"}</span>
+            <span style={{ color: t.text }}>Daily Load Capacity</span>
+            <span style={{ color: stats.isOverCapacity ? t.warning : t.accent }}>
+              ({stats.scheduledMinutes}m / {stats.availableMinutes}m available)
+            </span>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 10, color: t.textDim }}>
+            <span>Buffer: <strong>{stats.bufferMinutes}m</strong> protected (20%)</span>
+            {stats.overflowCount > 0 && (
+              <span style={{ color: t.danger, fontWeight: 700 }}>
+                +{stats.overflowCount} overflow (+{stats.overflowMinutes}m)
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Capacity Bar */}
+        <div
+          style={{
+            width: "100%",
+            height: 6,
+            background: t.border2,
+            borderRadius: 3,
+            overflow: "hidden",
+            display: "flex",
+          }}
         >
-          View All ({ofTasks.length}) →
-        </button>
+          <div
+            style={{
+              width: `${Math.min(100, Math.round((stats.scheduledMinutes / stats.availableMinutes) * 100))}%`,
+              background: stats.isOverCapacity ? t.warning : t.accent,
+              height: "100%",
+              borderRadius: 3,
+            }}
+          />
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9.5, color: t.textDim }}>
+          <span>
+            🧠 Deep Focus: {Math.round((stats.totalDeepWorkMinutes / 60) * 10) / 10}h
+            {stats.contextSwitches > 1 ? ` · 🔄 ${stats.contextSwitches} context switches` : ""}
+          </span>
+          <span
+            onClick={onOpenLoadPlanner}
+            style={{ cursor: "pointer", color: t.accent, fontWeight: 600 }}
+          >
+            {stats.isOverCapacity ? "Rebalance Overflow →" : "Optimize Schedule →"}
+          </span>
+        </div>
       </div>
 
       <QuickCaptureBar
@@ -279,7 +384,7 @@ export function TodayFocusMatrix({
                 >
                   {task.name}
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2, flexWrap: "wrap" }}>
                   <span style={{ fontSize: 9, color: ofColor(task.project), fontWeight: 600 }}>
                     {task.project}
                   </span>
@@ -289,6 +394,63 @@ export function TodayFocusMatrix({
                       {task.dueDate}
                     </span>
                   )}
+                  {/* Duration Pill */}
+                  <span
+                    style={{
+                      fontSize: 8.5,
+                      fontWeight: 700,
+                      background: `${t.accent}14`,
+                      color: t.accent,
+                      border: `1px solid ${t.accent}30`,
+                      padding: "1px 5px",
+                      borderRadius: 4,
+                    }}
+                  >
+                    ⏱️ {getTaskDuration(task)}m
+                  </span>
+                  {/* Energy Pill */}
+                  {(() => {
+                    const eng = getTaskEnergy(task);
+                    const engConf = ENERGY_CONFIG[eng];
+                    return (
+                      <span
+                        style={{
+                          fontSize: 8.5,
+                          fontWeight: 700,
+                          background: engConf.bg,
+                          color: engConf.color,
+                          border: `1px solid ${engConf.color}30`,
+                          padding: "1px 5px",
+                          borderRadius: 4,
+                        }}
+                      >
+                        {engConf.icon} {engConf.shortLabel}
+                      </span>
+                    );
+                  })()}
+                  {/* Priority Pill if Top or High */}
+                  {(() => {
+                    const pri = getTaskPriority(task);
+                    if (pri <= 2) {
+                      const p = priorityLabel(pri);
+                      return (
+                        <span
+                          style={{
+                            fontSize: 8.5,
+                            fontWeight: 700,
+                            background: `${p.color}18`,
+                            color: p.color,
+                            border: `1px solid ${p.color}30`,
+                            padding: "1px 5px",
+                            borderRadius: 4,
+                          }}
+                        >
+                          {p.code}
+                        </span>
+                      );
+                    }
+                    return null;
+                  })()}
                   {getTaskTags(task).map((tag) => (
                     <span
                       key={tag}
@@ -296,7 +458,7 @@ export function TodayFocusMatrix({
                         fontSize: 8.5,
                         fontWeight: 600,
                         background: t.surface,
-                        color: t.accent,
+                        color: t.textDim,
                         border: `1px solid ${t.border2}`,
                         padding: "1px 5px",
                         borderRadius: 4,

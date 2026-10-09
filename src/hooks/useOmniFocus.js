@@ -182,6 +182,48 @@ export function useOmniFocus(bridgeStatus) {
     [setOfTasks]
   );
 
+  const batchSyncTasks = useCallback(
+    async (changes) => {
+      if (!Array.isArray(changes) || changes.length === 0) return { success: true, count: 0 };
+
+      // Optimistically apply local updates
+      setOfTasks((prev) =>
+        prev.map((t) => {
+          const change = changes.find((c) => c.id === t.id);
+          if (!change) return t;
+          const updated = { ...t };
+          if ("newDate" in change) {
+            const dateOnly = change.newDate ? change.newDate.split(/[T ]/)[0] : null;
+            updated.dueDate = dateOnly;
+          }
+          if ("estimatedMinutes" in change) {
+            updated.estimatedMinutes = change.estimatedMinutes;
+          }
+          return updated;
+        })
+      );
+
+      try {
+        const bridgeUrl = getBridgeUrl();
+        const r = await fetch(`${bridgeUrl}/sync`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ changes }),
+          signal: AbortSignal.timeout(30000),
+        });
+        const data = await r.json();
+        if (!r.ok || !data.success) {
+          throw new Error(data.error || "Failed to batch sync tasks");
+        }
+        return { success: true, count: changes.length };
+      } catch (err) {
+        console.error("Batch sync tasks error:", err.message);
+        return { success: false, error: err.message };
+      }
+    },
+    [setOfTasks]
+  );
+
   return {
     ofTasks,
     setOfTasks,
@@ -196,5 +238,6 @@ export function useOmniFocus(bridgeStatus) {
     toggleFlag,
     createTask,
     updateTaskDueDate,
+    batchSyncTasks,
   };
 }

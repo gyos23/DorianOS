@@ -1,9 +1,10 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { fmt } from "../../utils/formatters.js";
 import { dateKey } from "../../utils/dates.js";
 import { PILLARS, getPillar } from "../../data/priorities.js";
 import { TodayFocusMatrix } from "./TodayFocusMatrix.jsx";
 import { RunwayRadar } from "./RunwayRadar.jsx";
+import { DailyLoadPlannerModal } from "./DailyLoadPlannerModal.jsx";
 
 export default function TodayTab({
   ofTasks = [],
@@ -32,8 +33,10 @@ export default function TodayTab({
   checkingBal,
   totalCashBal,
   onNavigate,
+  onBatchSyncTasks,
   t,
 }) {
+  const [isLoadPlannerOpen, setIsLoadPlannerOpen] = useState(false);
   const now = new Date();
   const dateFormatted = now.toLocaleDateString("en-US", {
     weekday: "long",
@@ -253,16 +256,36 @@ export default function TodayTab({
             gap: 4,
           }}
         >
-          <div
-            style={{
-              fontSize: 10,
-              color: t.textDim,
-              textTransform: "uppercase",
-              letterSpacing: ".08em",
-              fontWeight: 600,
-            }}
-          >
-            Task Readiness
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div
+              style={{
+                fontSize: 10,
+                color: t.textDim,
+                textTransform: "uppercase",
+                letterSpacing: ".08em",
+                fontWeight: 600,
+              }}
+            >
+              Task Readiness
+            </div>
+            <button
+              onClick={() => setIsLoadPlannerOpen(true)}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: 0,
+                fontSize: 11,
+                fontWeight: 700,
+                color: t.accent,
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+              }}
+              title="Open Daily Load Planning Engine"
+            >
+              ⚡ Plan Day →
+            </button>
           </div>
           <div style={{ fontSize: 13, color: t.text, fontWeight: 500 }}>
             {overdueCount > 0 ? (
@@ -507,6 +530,7 @@ export default function TodayTab({
           onCreateTask={onCreateTask}
           bridgeStatus={bridgeStatus}
           onNavigateTasks={() => onNavigate("tasks")}
+          onOpenLoadPlanner={() => setIsLoadPlannerOpen(true)}
           t={t}
         />
 
@@ -631,6 +655,15 @@ export default function TodayTab({
           </div>
         </div>
       </div>
+
+      <DailyLoadPlannerModal
+        isOpen={isLoadPlannerOpen}
+        onClose={() => setIsLoadPlannerOpen(false)}
+        ofTasks={ofTasks}
+        bridgeStatus={bridgeStatus}
+        onBatchSyncTasks={onBatchSyncTasks}
+        t={t}
+      />
     </div>
   );
 }
