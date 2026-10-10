@@ -1,5 +1,6 @@
-import React, { useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { PILLARS, getPillar } from "../../data/priorities.js";
+import { UnstickActionModal } from "./UnstickActionModal.jsx";
 
 // Helper for resilient project matching across emoji decorations & punctuation
 function matchProjectNames(target, candidate) {
@@ -32,6 +33,8 @@ export function FrictionRadar({
   onNavigate,
   t,
 }) {
+  const [unstickTarget, setUnstickTarget] = useState(null);
+
   // Analyze stagnation & friction across active priorities
   const stalledPriorities = useMemo(() => {
     const active = priorities.filter((p) => p.status === "active");
@@ -200,19 +203,10 @@ export function FrictionRadar({
                 {onCreateTask && priority.ofProject && (
                   <button
                     className="btn"
-                    onClick={() => {
-                      const actionName = prompt(`Create unstick action for "${priority.title}":`, "Review blockers and outline next 3 steps");
-                      if (actionName) {
-                        onCreateTask({
-                          name: actionName,
-                          project: priority.ofProject,
-                          flagged: true,
-                        });
-                      }
-                    }}
-                    style={{ fontSize: 10, padding: "2px 8px", color: t.accent }}
+                    onClick={() => setUnstickTarget({ priority, pillar })}
+                    style={{ fontSize: 10, padding: "2px 8px", color: t.accent, fontWeight: 600 }}
                   >
-                    + Add Next Action
+                    ⚡ Unstick with Template →
                   </button>
                 )}
               </div>
@@ -220,6 +214,17 @@ export function FrictionRadar({
           );
         })}
       </div>
+
+      {/* 1-Click Unstick Action Modal */}
+      {unstickTarget && (
+        <UnstickActionModal
+          priority={unstickTarget.priority}
+          pillar={unstickTarget.pillar}
+          onCreateTask={onCreateTask}
+          onClose={() => setUnstickTarget(null)}
+          t={t}
+        />
+      )}
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { getBridgeUrl } from "../../utils/config.js";
 
 import { CADENCES, WEEKLY_STEPS, MONTHLY_STEPS, QUARTERLY_STEPS } from "../../data/reviewSteps.js";
 import { ReviewHistoryTracker } from "./ReviewHistoryTracker.jsx";
+import { WeeklyMetricRollup } from "./WeeklyMetricRollup.jsx";
 
 export default function ReviewTab({
   ofTasks = [],
@@ -19,6 +20,8 @@ export default function ReviewTab({
   onCreateTask,
   priorities = [],
   setPriorities,
+  progressHistory = [],
+  setProgressHistory,
   pillars = PILLARS,
   setPillars,
   startBal,
@@ -40,6 +43,7 @@ export default function ReviewTab({
 }) {
   const [cadence, setCadence] = usePersistentState("review.activeCadence", "weekly");
   const [activeStep, setActiveStep] = useState("inbox");
+  const [showMetricRollup, setShowMetricRollup] = useState(true);
 
   // Weekly review state
   const [weeklyNotes, setWeeklyNotes] = usePersistentState("review.weeklyNotes", {
@@ -206,6 +210,13 @@ export default function ReviewTab({
       notes: cadence === "monthly" ? { ...monthlyNotes } : cadence === "quarterly" ? { ...quarterlyNotes } : { ...weeklyNotes },
       cashSnapshot: startBal,
       runwayBasis,
+      prioritiesSnapshot: (priorities || []).map((p) => ({
+        id: p.id,
+        title: p.title,
+        currentValue: p.currentValue,
+        targetValue: p.targetValue,
+        unit: p.unit,
+      })),
     };
     setReviewHistory((prev) => [entry, ...prev.slice(0, 50)]);
 
@@ -303,6 +314,14 @@ export default function ReviewTab({
           </div>
 
           <button
+            className={`btn ${showMetricRollup ? "active" : ""}`}
+            onClick={() => setShowMetricRollup((p) => !p)}
+            style={{ fontSize: 11, padding: "5px 10px" }}
+          >
+            🧠 Metric Intelligence ({progressHistory.length})
+          </button>
+
+          <button
             className={`btn ${showHistoryTracker ? "active" : ""}`}
             onClick={() => setShowHistoryTracker((p) => !p)}
             style={{ fontSize: 11, padding: "5px 10px" }}
@@ -319,6 +338,25 @@ export default function ReviewTab({
           </button>
         </div>
       </div>
+
+      {/* Metric Rollup & Analytical Insights Panel */}
+      {showMetricRollup && (
+        <WeeklyMetricRollup
+          priorities={priorities}
+          progressHistory={progressHistory}
+          setProgressHistory={setProgressHistory}
+          startBal={startBal}
+          checkingBal={checkingBal}
+          runwayDays={runwayBasis === "total" ? (totalCashBal > 0 ? Math.round(totalCashBal / (cfBudget / 30)) : 60) : (checkingBal > 0 ? Math.round(checkingBal / (cfBudget / 30)) : 60)}
+          monthlyBurn={cfBudget}
+          cashZeroDate={cashZeroDate}
+          debts={debts}
+          payoffDate={payoffDate}
+          ofTasks={ofTasks}
+          ofProjects={ofProjects}
+          t={t}
+        />
+      )}
 
       {/* Commitment Velocity & Review History Panel */}
       {showHistoryTracker && (

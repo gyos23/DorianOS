@@ -36,6 +36,17 @@ export default function App() {
   }, [section]);
   const [pillars, setPillars] = usePersistentState("pillars", INITIAL_PILLARS);
   const [priorities, setPriorities] = usePersistentState("priorities.list", INITIAL_PRIORITIES);
+  const [progressHistory, setProgressHistory] = usePersistentState("priorities.progressHistory", []);
+
+  const handleLogWeekProgress = useCallback(
+    (entry) => {
+      setProgressHistory((prev) => [entry, ...(prev || []).slice(0, 50)]);
+      setPriorities((prev) =>
+        prev.map((p) => (p.id === entry.priorityId ? { ...p, currentValue: 0 } : p))
+      );
+    },
+    [setProgressHistory, setPriorities]
+  );
 
   // Auto-migrate legacy 50-total Forward goal into the 10 apps weekly cadence
   useEffect(() => {
@@ -475,6 +486,8 @@ export default function App() {
               onCreateTask={createTask}
               priorities={priorities}
               setPriorities={setPriorities}
+              progressHistory={progressHistory}
+              setProgressHistory={setProgressHistory}
               pillars={pillars}
               setPillars={setPillars}
               startBal={startBal}
@@ -502,6 +515,8 @@ export default function App() {
             <PrioritiesTab
               priorities={priorities}
               setPriorities={setPriorities}
+              progressHistory={progressHistory}
+              onLogWeekProgress={handleLogWeekProgress}
               ofTasks={ofTasks}
               ofProjects={ofProjects}
               fetchOFProjects={fetchOFProjects}
@@ -512,6 +527,8 @@ export default function App() {
               pillars={pillars}
               setPillars={setPillars}
               cashZeroDate={cashZeroDate}
+              startBal={startBal}
+              checkingBal={checkingBal}
               t={t}
             />
           </div>

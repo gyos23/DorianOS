@@ -9,6 +9,8 @@ import { ofDueLabel } from "../../utils/dates.js";
 export default function PrioritiesTab({
   priorities = [],
   setPriorities,
+  progressHistory = [],
+  onLogWeekProgress,
   ofTasks = [],
   ofProjects = [],
   fetchOFProjects,
@@ -19,6 +21,8 @@ export default function PrioritiesTab({
   pillars = PILLARS,
   setPillars,
   cashZeroDate,
+  startBal,
+  checkingBal,
   t,
 }) {
   const [selectedPillar, setSelectedPillar] = useState("all");
@@ -359,6 +363,8 @@ export default function PrioritiesTab({
               priority={priority}
               ofTasks={ofTasks}
               ofProjects={ofProjects}
+              progressHistory={progressHistory}
+              onLogWeekProgress={onLogWeekProgress}
               onUpdatePriority={handleUpdatePriority}
               onEditPriority={handleOpenEdit}
               onDeletePriority={handleDeletePriority}
@@ -367,6 +373,8 @@ export default function PrioritiesTab({
               onCreateTask={onCreateTask}
               pillars={pillars}
               cashZeroDate={cashZeroDate}
+              startBal={startBal}
+              checkingBal={checkingBal}
               t={t}
             />
           ))}

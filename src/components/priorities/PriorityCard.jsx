@@ -3,11 +3,14 @@ import { PILLARS, getPillar } from "../../data/priorities.js";
 import { ofDueLabel } from "../../utils/dates.js";
 import { ofColor } from "../../data/tasks.js";
 import { fmt } from "../../utils/formatters.js";
+import { LogWeekModal } from "./LogWeekModal.jsx";
 
 export function PriorityCard({
   priority,
   ofTasks = [],
   ofProjects = [],
+  progressHistory = [],
+  onLogWeekProgress,
   onUpdatePriority,
   onEditPriority,
   onDeletePriority,
@@ -16,6 +19,8 @@ export function PriorityCard({
   onCreateTask,
   pillars = PILLARS,
   cashZeroDate,
+  startBal,
+  checkingBal,
   t,
 }) {
   const [showSmart, setShowSmart] = useState(false);
@@ -24,6 +29,7 @@ export function PriorityCard({
   const [completingIds, setCompletingIds] = useState(new Set());
   const [isEditingValue, setIsEditingValue] = useState(false);
   const [editInputVal, setEditInputVal] = useState("");
+  const [showLogWeekModal, setShowLogWeekModal] = useState(false);
 
   const pillar = getPillar(pillars, priority.pillar);
 
@@ -68,6 +74,11 @@ export function PriorityCard({
       );
     });
   }, [ofTasks, priority.ofProject]);
+
+  // Filter archived weekly memories for this priority
+  const pastMemories = useMemo(() => {
+    return (progressHistory || []).filter((h) => h.priorityId === priority.id);
+  }, [progressHistory, priority.id]);
 
   const percent = useMemo(() => {
     if (!priority.targetValue || priority.targetValue <= 0) return 0;
@@ -377,11 +388,11 @@ export function PriorityCard({
               <button
                 type="button"
                 className="btn"
-                onClick={() => handleSetExact(0)}
-                style={{ fontSize: 10, padding: "2px 6px", color: t.textDim }}
-                title="Reset counter for new week"
+                onClick={() => setShowLogWeekModal(true)}
+                style={{ fontSize: 10, padding: "2px 7px", color: t.accent, fontWeight: 700, borderColor: `${t.accent}40` }}
+                title="Log accomplishments as permanent memory & start fresh week"
               >
-                ↺ Week
+                📥 Log Week
               </button>
             </div>
           ) : (
@@ -456,6 +467,43 @@ export function PriorityCard({
             </span>
           )}
         </div>
+
+        {/* Past Weeks Memory Trail */}
+        {pastMemories.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 10,
+              color: t.textDim,
+              background: t.surface2,
+              padding: "4px 8px",
+              borderRadius: 6,
+              marginTop: 2,
+            }}
+          >
+            <span style={{ fontWeight: 700, color: t.text }}>Memories ({pastMemories.length}):</span>
+            <div style={{ display: "flex", gap: 6, overflowX: "auto" }}>
+              {pastMemories.slice(0, 3).map((m) => (
+                <span
+                  key={m.id}
+                  title={`${m.weekLabel}: ${m.reflection || ""}`}
+                  style={{
+                    background: m.percent >= 100 ? "#10B98118" : `${t.accent}14`,
+                    color: m.percent >= 100 ? "#10B981" : t.accent,
+                    padding: "1px 5px",
+                    borderRadius: 4,
+                    fontWeight: 600,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {m.valueAchieved}/{m.targetValue} {m.unit}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Live OmniFocus Next Actions */}
@@ -807,6 +855,24 @@ export function PriorityCard({
             </div>
           )}
         </div>
+      )}
+
+      {/* Log Week Progress Modal */}
+      {showLogWeekModal && (
+        <LogWeekModal
+          priority={priority}
+          pillar={pillar}
+          financials={{
+            runwayDays: liveRunwayDays,
+            checkingBal,
+            startBal,
+          }}
+          onSaveProgress={(entry) => {
+            onLogWeekProgress?.(entry);
+          }}
+          onClose={() => setShowLogWeekModal(false)}
+          t={t}
+        />
       )}
     </div>
   );
