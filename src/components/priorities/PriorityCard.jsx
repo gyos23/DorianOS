@@ -4,6 +4,7 @@ import { ofDueLabel } from "../../utils/dates.js";
 import { ofColor } from "../../data/tasks.js";
 import { fmt } from "../../utils/formatters.js";
 import { LogWeekModal } from "./LogWeekModal.jsx";
+import { matchProjectNames } from "../../utils/projectMatcher.js";
 
 export function PriorityCard({
   priority,
@@ -54,25 +55,13 @@ export function PriorityCard({
   // Match linked OmniFocus project metadata & pacing stats
   const matchedProject = useMemo(() => {
     if (!priority.ofProject || !ofProjects || ofProjects.length === 0) return null;
-    const target = priority.ofProject.toLowerCase().trim();
-    return ofProjects.find((p) => {
-      const pName = (p.name || "").toLowerCase().trim();
-      return pName === target || pName.includes(target) || target.includes(pName);
-    });
+    return ofProjects.find((p) => matchProjectNames(priority.ofProject, p.name));
   }, [priority.ofProject, ofProjects]);
 
   // Filter linked OmniFocus tasks
   const linkedTasks = useMemo(() => {
     if (!priority.ofProject) return [];
-    const projName = priority.ofProject.toLowerCase().trim();
-    return ofTasks.filter((task) => {
-      const taskProj = (task.project || "").toLowerCase().trim();
-      return (
-        taskProj === projName ||
-        taskProj.includes(projName) ||
-        projName.includes(taskProj)
-      );
-    });
+    return ofTasks.filter((task) => matchProjectNames(priority.ofProject, task.project));
   }, [ofTasks, priority.ofProject]);
 
   // Filter archived weekly memories for this priority

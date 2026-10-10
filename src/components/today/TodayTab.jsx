@@ -5,6 +5,7 @@ import { PILLARS, getPillar } from "../../data/priorities.js";
 import { TodayFocusMatrix } from "./TodayFocusMatrix.jsx";
 import { RunwayRadar } from "./RunwayRadar.jsx";
 import { DailyLoadPlannerModal } from "./DailyLoadPlannerModal.jsx";
+import { matchProjectNames } from "../../utils/projectMatcher.js";
 
 export default function TodayTab({
   ofTasks = [],
@@ -81,12 +82,7 @@ export default function TodayTab({
   const stalledPrioritiesCount = useMemo(() => {
     return activePriorities.filter((p) => {
       if (!p.ofProject) return p.currentValue === 0;
-      const target = p.ofProject.toLowerCase().trim();
-      const proj = (ofProjects || []).find(
-        (pr) =>
-          (pr.name || "").toLowerCase().trim() === target ||
-          (pr.name || "").toLowerCase().includes(target)
-      );
+      const proj = (ofProjects || []).find((pr) => matchProjectNames(p.ofProject, pr.name));
       if (!proj) return false;
       const days = proj.daysSinceActivity;
       if (days !== null && days !== undefined && days < 7) return false;

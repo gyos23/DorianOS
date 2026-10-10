@@ -59,9 +59,9 @@ export function getPillar(pillars = {}, pillarId) {
 export const INITIAL_PRIORITIES = [
   {
     id: "p-forward-role",
-    title: "Find Next Role",
+    title: "Land Next Role",
     pillar: "forward",
-    ofProject: "⚪️1. Find Next Role ▶️",
+    ofProject: "⚪️2. Land Next Role ▶️",
     status: "active", // active | paused | completed | dropped
     metricType: "weekly_cadence", // counter | currency | percent | runway | weekly_cadence
     cadence: "weekly",
@@ -83,7 +83,7 @@ export const INITIAL_PRIORITIES = [
     id: "p-finance-runway",
     title: "Financial Health & Runway Protection",
     pillar: "finance",
-    ofProject: "🟢2. Financial Health 💳 🚫",
+    ofProject: "🟢3. Improve Financial Wealth 💳 🚫",
     status: "active",
     metricType: "runway",
     currentValue: 60,
@@ -103,7 +103,7 @@ export const INITIAL_PRIORITIES = [
     id: "p-freedom-planners",
     title: "Sell 300 Planners",
     pillar: "freedom",
-    ofProject: "🔴3. Sell 300 Planners 📖",
+    ofProject: "🔴 1. Sell 300 Planners 📖",
     status: "active",
     metricType: "counter",
     currentValue: 24,

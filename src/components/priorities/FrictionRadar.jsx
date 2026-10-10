@@ -1,28 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { PILLARS, getPillar } from "../../data/priorities.js";
 import { UnstickActionModal } from "./UnstickActionModal.jsx";
-
-// Helper for resilient project matching across emoji decorations & punctuation
-function matchProjectNames(target, candidate) {
-  if (!target || !candidate) return false;
-  const t = target.toLowerCase().trim();
-  const c = candidate.toLowerCase().trim();
-  if (t === c || t.includes(c) || c.includes(t)) return true;
-
-  const clean = (s) =>
-    s
-      .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/gu, "")
-      .replace(/[^\w\s]/gi, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-
-  const cleanT = clean(t);
-  const cleanC = clean(c);
-  if (cleanT && cleanC && (cleanT.includes(cleanC) || cleanC.includes(cleanT))) {
-    return true;
-  }
-  return false;
-}
+import { matchProjectNames } from "../../utils/projectMatcher.js";
 
 export function FrictionRadar({
   priorities = [],

@@ -5,6 +5,7 @@ import { EditPriorityModal } from "./EditPriorityModal.jsx";
 import { ManagePillarsModal } from "./ManagePillarsModal.jsx";
 import { FrictionRadar } from "./FrictionRadar.jsx";
 import { ofDueLabel } from "../../utils/dates.js";
+import { matchProjectNames } from "../../utils/projectMatcher.js";
 
 export default function PrioritiesTab({
   priorities = [],
@@ -35,8 +36,13 @@ export default function PrioritiesTab({
   const [matrixNewTasks, setMatrixNewTasks] = useState({});
 
   const projectList = useMemo(() => {
-    return Array.from(new Set(ofTasks.map((t) => t.project).filter(Boolean)));
-  }, [ofTasks]);
+    return Array.from(
+      new Set([
+        ...(ofProjects || []).map((p) => p.name),
+        ...(ofTasks || []).map((t) => t.project),
+      ].filter(Boolean))
+    );
+  }, [ofProjects, ofTasks]);
 
   const filteredPriorities = useMemo(() => {
     return priorities.filter((p) => {
@@ -68,11 +74,7 @@ export default function PrioritiesTab({
       setPriorities((prev) =>
         prev.map((priority) => {
           if (!priority.ofProject) return priority;
-          const targetName = priority.ofProject.toLowerCase().trim();
-          const match = ofProjs.find((p) => {
-            const pName = (p.name || "").toLowerCase().trim();
-            return pName === targetName || pName.includes(targetName) || targetName.includes(pName);
-          });
+          const match = ofProjs.find((p) => matchProjectNames(priority.ofProject, p.name));
 
           if (!match || !match.note) return priority;
 

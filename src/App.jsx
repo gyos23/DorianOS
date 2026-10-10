@@ -48,21 +48,39 @@ export default function App() {
     [setProgressHistory, setPriorities]
   );
 
-  // Auto-migrate legacy 50-total Forward goal into the 10 apps weekly cadence
+  // Auto-migrate legacy 50-total Forward goal into weekly cadence & sync renamed OF4 projects
   useEffect(() => {
     setPriorities((prev) => {
       let changed = false;
       const updated = prev.map((p) => {
-        if (p.id === "p-forward-role" && (p.targetValue === 50 || p.unit === "applications")) {
+        let item = { ...p };
+
+        // 1. Reconcile with renamed OmniFocus 4 project names
+        if (item.id === "p-forward-role" && (item.ofProject === "⚪️1. Find Next Role ▶️" || !item.ofProject?.includes("Land Next Role"))) {
+          item.ofProject = "⚪️2. Land Next Role ▶️";
+          item.title = "Land Next Role";
           changed = true;
-          return {
-            ...p,
+        }
+        if (item.id === "p-finance-runway" && (item.ofProject === "🟢2. Financial Health 💳 🚫" || !item.ofProject?.includes("Improve Financial Wealth"))) {
+          item.ofProject = "🟢3. Improve Financial Wealth 💳 🚫";
+          changed = true;
+        }
+        if (item.id === "p-freedom-planners" && (item.ofProject === "🔴3. Sell 300 Planners 📖" || !item.ofProject?.includes("1. Sell 300 Planners"))) {
+          item.ofProject = "🔴 1. Sell 300 Planners 📖";
+          changed = true;
+        }
+
+        // 2. Forward goal 10 apps weekly cadence
+        if (item.id === "p-forward-role" && (item.targetValue === 50 || item.unit === "applications")) {
+          changed = true;
+          item = {
+            ...item,
             targetValue: 10,
             unit: "apps / wk",
             status: "active",
             metricType: "weekly_cadence",
             cadence: "weekly",
-            currentValue: p.currentValue >= 50 ? 0 : Math.min(p.currentValue, 10),
+            currentValue: item.currentValue >= 50 ? 0 : Math.min(item.currentValue, 10),
             targetDate: "Weekly Cadence",
             smart: {
               specific: "Land a Delivery Manager (or Project/Program Manager) role — hybrid or remote, contract or perm.",
@@ -74,7 +92,7 @@ export default function App() {
             notes: "10 high-quality tailored applications weekly. Resume tailored for aviation, tech, and enterprise ops.",
           };
         }
-        return p;
+        return item;
       });
       return changed ? updated : prev;
     });
